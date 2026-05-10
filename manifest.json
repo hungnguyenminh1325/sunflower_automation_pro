@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Sunflower Land UI Automation",
+  "version": "1.0.0",
+  "description": "UI-first automation for Sunflower Land: chop, mine, farm, workbench tools, mushrooms. Optional in-page state bridge. Unofficial companion.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://sunflower-land.com/*",
+    "https://www.sunflower-land.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["scripts/bridge/page-bridge.js"],
+      "matches": [
+        "https://sunflower-land.com/*",
+        "https://www.sunflower-land.com/*"
+      ]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sunflower-land.com/*",
+        "https://www.sunflower-land.com/*"
+      ],
+      "all_frames": true,
+      "js": [
+        "content.js",
+        "scripts/config.js",
+        "scripts/state.js",
+        "scripts/utils/dom.js",
+        "scripts/utils/time.js",
+        "scripts/settings.js",
+        "scripts/bridge/game-bridge.js",
+        "scripts/flows/workbench.js",
+        "scripts/flows/wood-chop.js",
+        "scripts/flows/rock-mine.js",
+        "scripts/flows/mushroom-harvest.js",
+        "scripts/flows/cook.js",
+        "scripts/flows/crop-dom.js",
+        "scripts/flows/petal-collect-dom.js",
+        "scripts/automation.js",
+        "scripts/bootstrap.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sunflower Land UI Automation · v1.0.0"
+  }
+}

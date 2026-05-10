@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sunflower Land UI Automation · v1.0.0</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Sunflower Land</p>
+          <h1>Sunflower Land UI Automation</h1>
+          <p class="hero-text">v1.0.0 — UI-first automation for Sunflower Land: chop, mine, farm, workbench, and related flows.</p>
+        </div>
+        <label class="power-switch" aria-label="Bật hoặc tắt toàn bộ">
+          <input id="masterEnabled" type="checkbox" />
+          <span class="power-track">
+            <span class="power-label power-off">OFF</span>
+            <span class="power-thumb"></span>
+            <span class="power-label power-on">ON</span>
+          </span>
+        </label>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Tác vụ chính</p>
+            <h2>Tự động hóa</h2>
+          </div>
+        </div>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự mua công cụ (rìu + cuốc, Workbench)</strong>
+            <small
+              >Một công tắc cho cả cây và đá: hết rìu hoặc hết pickaxe thì bot xếp hàng → mở bàn Blacksmith → chọn icon tool → Craft → đóng X.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoBuyTools" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Restock Blacksmith khi hết stock</strong>
+            <small>Bật nếu cần bot bấm Restock khi NPC hết hàng. Tắt: vẫn craft qua Craft 1 khi đủ nguyên liệu — không còn xóa hàng chờ mua như trước.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoRestockBlacksmith" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự chặt cây</strong>
+            <small>Ưu tiên vòng lặp thu hoạch tài nguyên gỗ.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoChop" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự đào đá / quặng</strong>
+            <small>Tap đá đủ nhịp (thường 3) là khai thác xong. Hết cuốc: cần bật «Tự mua công cụ» ở trên để vào Workbench craft pickaxe.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoMine" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự nấu Fire Pit (bridge)</strong>
+            <small>Thu hoạch khi xong, hoặc bắt đầu món có đủ nguyên liệu — gửi sự kiện qua page bridge (giống CODE CU), không cần DOM.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoCookFirePit" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự nấu Kitchen (bridge)</strong>
+            <small>Cùng logic Fire Pit, danh sách công thức Kitchen như bản cũ.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoCookKitchen" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <div class="strike-grid" style="margin: -8px 0 12px">
+          <label class="strike-field">
+            <span>Ưu tiên món nấu (tùy chọn)</span>
+            <input
+              id="cookPreferredRecipe"
+              type="text"
+              maxlength="80"
+              spellcheck="false"
+              placeholder="vd: Pancakes (cần Honey)"
+            />
+          </label>
+        </div>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Hoa / cây quả / mật ong (DOM)</strong>
+            <small
+              >Thu khi thanh tiến độ (empty_bar + màu xanh/cam) gần đầy; tổ ong: bấm nhà → Collect. Bỏ qua hoa còn
+              sprout/bud. Dùng chung khoảng cách thao tác (action gap) với ruộng.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoPetalHarvestDom" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Kẹt captcha Goblin / Moon → hard reload game (Shift + F5)</strong>
+            <small
+              >Khi đang mở minigame «Stop the Goblins» hoặc «Moon Seekers» (lưới 4×4), bot gọi hard reload (kiểu Shift + F5) để thoát.
+              Cách nhau ~35 giây để tránh lặp vô hạn. Có thể mất bước chưa lưu — chỉ bật khi làm tay cũng không xong.</small>
+          </span>
+          <span class="toggle">
+            <input id="reloadPageOnGoblinMoonCaptcha" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+        <p class="setting-hint" style="margin: -4px 0 10px">
+          Đã thoát bằng tải lại: <strong id="captchaReloadSkipCount">0</strong> lần
+          <button type="button" id="resetCaptchaReloadSkipCount" class="ghost-button" style="margin-left: 8px; padding: 4px 10px; font-size: 12px">
+            Xóa số đếm
+          </button>
+        </p>
+        <p class="setting-hint" style="margin: -4px 0 10px">
+          Captcha: <span style="color:#4ade80">✓ Thành công: <strong id="captchaSolvedCount">0</strong></span>
+          &nbsp;|&nbsp;
+          <span style="color:#f87171">✗ Thất bại: <strong id="captchaFailedCount">0</strong></span>
+        </p>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Ruộng: thu + mua hạt + gieo (DOM)</strong>
+            <small>Bridge còn ô trống: ưu tiên gieo. Mua tại Betty (bật tùy chọn bên dưới): mở Market «Buy 1» khi hết hạt trong túi. Tắt mua: chỉ dùng hạt trong kho — hết hạt thì chỉ thu; không còn gì để thu thì bỏ qua tick ruộng. Khi hết ô trống: thu (plant.png) trước. Tên hạt đúng game (vd. Sunflower Seed). Cần bridge.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoFarmCropsDom" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+        <div class="strike-grid" style="margin: -8px 0 12px">
+          <label class="strike-field">
+            <span>Tên hạt</span>
+            <input id="cropDomSeedName" type="text" maxlength="80" spellcheck="false" value="Sunflower Seed" />
+          </label>
+        </div>
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Ưu tiên hạt lớn nhanh (catalogue)</strong>
+            <small>Bật: thứ tự mua/gieo xếp theo thời gian lớn <em>cơ bản</em> trong game (ngắn trước, dài sau). Không loại hẳn hạt lâu — trên ruộng cây vẫn có thể chín sớm hơn nhờ buff, phân, v.v.</small>
+          </span>
+          <span class="toggle">
+            <input id="cropDomSkipLongGrow" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Mua hạt tại Betty (Market)</strong>
+            <small>Tắt (mặc định): không mở shop mua hạt — chỉ gieo khi còn hạt trong kho. Bật: khi hết hạt trong túi, bot mở Betty và mua «Buy 1» như trước.</small>
+          </span>
+          <span class="toggle">
+            <input id="cropDomBuySeedsAtBetty" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự thu nấm (wild / magic)</strong>
+            <small>Mỗi 2 giờ quét một lần: tap nấm trong tầm nhìn (theo loại bạn bật bên dưới). Luồng riêng: không chờ action gap với cây/đá, tới giờ là chạy ngay đầu tick. Không cần tool.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoHarvestMushrooms" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
+        <p class="setting-hint mine-target-intro">
+          <strong>Loại nấm cần thu:</strong> chỉ bật loại bạn muốn — bot nhận diện theo sheet ảnh wild / magic trên ô nấm (giống DOM game).
+        </p>
+        <div class="mine-target-bunch">
+          <label class="mine-chip">
+            <input id="mushroomTargetWild" type="checkbox" checked />
+            <span>Wild mushroom</span>
+          </label>
+          <label class="mine-chip">
+            <input id="mushroomTargetMagic" type="checkbox" checked />
+            <span>Magic mushroom</span>
+          </label>
+        </div>
+
+        <p class="setting-hint mine-target-intro">
+          <strong>Quặng cần đào:</strong> chỉ bật loại bạn muốn — bot ưu tiên <strong>đá → sắt → vàng → crimstone → sunstone</strong> (trong tầm nhìn). Tắt hết thì không đào loại đó.
+        </p>
+        <div class="mine-target-bunch">
+          <label class="mine-chip">
+            <input id="mineTargetStone" type="checkbox" checked />
+            <span>Đá (stone)</span>
+          </label>
+          <label class="mine-chip">
+            <input id="mineTargetIron" type="checkbox" checked />
+            <span>Sắt (iron)</span>
+          </label>
+          <label class="mine-chip">
+            <input id="mineTargetGold" type="checkbox" checked />
+            <span>Vàng (gold rock)</span>
+          </label>
+          <label class="mine-chip">
+            <input id="mineTargetCrimstone" type="checkbox" checked />
+            <span>Crimstone</span>
+          </label>
+          <label class="mine-chip">
+            <input id="mineTargetSunstone" type="checkbox" checked />
+            <span>Sunstone</span>
+          </label>
+        </div>
+
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Strike</p>
+            <h2>Số nhịp đập (lưu như cài đặt)</h2>
+          </div>
+        </div>
+        <p class="setting-hint">
+          Lần đầu bot tự thử đến khi cây xong (tối đa 8 nhịp), rồi ghi số nhịp. Bạn có thể chỉnh tay 1–8.
+          <strong>Ô số «Đá»</strong> là <strong>số nhịp đập mỗi ô</strong> (1–8), <em>không phải</em> số cục đá trên farm.
+        </p>
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự học số nhịp chặt cây</strong>
+            <small>Một lần cho cả cây.</small>
+          </span>
+          <span class="toggle">
+            <input id="strikeLearnAutoChop" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+        <div class="strike-grid">
+          <label class="strike-field">
+            <span>Cây</span>
+            <input id="chopStrikes" type="number" min="1" max="8" step="1" value="3" />
+          </label>
+          <label class="strike-field">
+            <span>Đá</span>
+            <input id="mineStrikes" type="number" min="1" max="8" step="1" value="3" />
+          </label>
+        </div>
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Tự học số nhịp đào đá</strong>
+            <small>Một lần cho mỗi ô đá (giống cây).</small>
+          </span>
+          <span class="toggle">
+            <input id="strikeLearnAutoMine" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+        <button type="button" id="resetStrikeLearn" class="ghost-button">
+          Học lại cây (xóa bộ nhớ đã học)
+        </button>
+        <button type="button" id="resetMineStrikeLearn" class="ghost-button">
+          Học lại đá (xóa bộ nhớ đã học)
+        </button>
+      </section>
+
+      <section class="status-panel">
+        <div class="status-top">
+          <div>
+            <p class="panel-kicker">Runtime</p>
+            <h2>Điều phối luồng</h2>
+          </div>
+          <span id="statusBadge" class="status-badge">Đang tải</span>
+        </div>
+
+        <div class="flow-grid">
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="resourceFlowName">Luồng tài nguyên</strong>
+              <span id="resourceFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="resourceFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="resourceFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="resourceFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="resourceFlowPercent" class="flow-percent">0%</div>
+            <div id="resourceFlowQueue" class="flow-queue">Hàng chờ mua tool: trống</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="oreFlowName">Luồng đá / quặng</strong>
+              <span id="oreFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="oreFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="oreFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="oreFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="oreFlowPercent" class="flow-percent">0%</div>
+            <div id="oreFlowQueue" class="flow-queue">Hàng chờ mua tool: trống</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="mushroomFlowName">Luồng nấm</strong>
+              <span id="mushroomFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="mushroomFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="mushroomFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="mushroomFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="mushroomFlowPercent" class="flow-percent">0%</div>
+            <div id="mushroomFlowQueue" class="flow-queue">—</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="cookFlowName">Luồng nấu ăn</strong>
+              <span id="cookFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="cookFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="cookFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="cookFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="cookFlowPercent" class="flow-percent">0%</div>
+            <div id="cookFlowQueue" class="flow-queue">Thu + nấu qua bridge — chờ theo giờ chín món</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="petalFlowName">Luồng hoa / quả / ong</strong>
+              <span id="petalFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="petalFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="petalFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="petalFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="petalFlowPercent" class="flow-percent">0%</div>
+            <div id="petalFlowQueue" class="flow-queue">—</div>
+          </div>
+        </div>
+
+        <p id="statusText" class="status-note">Đang tải dữ liệu từ tab game...</p>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

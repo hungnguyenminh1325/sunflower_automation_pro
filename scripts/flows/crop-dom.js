@@ -160,9 +160,10 @@
    * Ưu tiên: hạt ưu tiên người dùng → rẻ nhất theo mùa → ngắn nhất nếu skipLongGrow.
    */
   function getNextSeedToBuyViaEvent(stock, seasonKey, preferredSeed, skipLongGrow) {
-    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên mua hạt này. Nếu Betty hết hàng, chuyển qua hạt khác
+    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên mua hạt này NẾU đúng mùa. Nếu Betty hết hàng hoặc hạt sai mùa, chuyển qua hạt khác
     if (preferredSeed && preferredSeed !== "Auto") {
-      if ((stock[preferredSeed] || 0) > 0) return preferredSeed;
+      const allowedForPref = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
+      if (allowedForPref.includes(preferredSeed) && (stock[preferredSeed] || 0) > 0) return preferredSeed;
     }
 
     const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
@@ -199,9 +200,10 @@
    * @returns {string|null}
    */
   function getBestSeedFromInventory(inventory, seasonKey, preferredSeed, skipLongGrow) {
-    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên gieo hạt này. Nếu hết thì chuyển qua hạt khác.
+    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên gieo hạt này NẾU đúng mùa. Nếu hết hoặc sai mùa thì chuyển qua hạt khác.
     if (preferredSeed && preferredSeed !== "Auto") {
-      if (Math.floor(Number(inventory[preferredSeed] || 0)) > 0) return preferredSeed;
+      const allowedForPref = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
+      if (allowedForPref.includes(preferredSeed) && Math.floor(Number(inventory[preferredSeed] || 0)) > 0) return preferredSeed;
     }
 
     const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
@@ -245,8 +247,8 @@
   function orderedCropDomSeedsForSeason() {
     const list = seasonalCropPlotSeedList();
     const pref = String(runtime.settings.cropDomSeedName || "Auto").trim() || "Auto";
-    // Nếu user chọn hạt cụ thể, ưu tiên đưa hạt đó lên đầu mảng (dù khác mùa)
-    const first = (pref !== "Auto") ? pref : list[0];
+    // Nếu user chọn hạt cụ thể VÀ hạt đó thuộc mùa hiện tại, ưu tiên đưa hạt đó lên đầu mảng
+    const first = (pref !== "Auto" && list.includes(pref)) ? pref : list[0];
     const rest = list.filter((n) => n !== first);
     return [first, ...rest];
   }
@@ -409,6 +411,73 @@
 
   function isBareSoilImgUrlStrict(u) {
     return BARE_SOIL_URL_RE.test(String(u || "").toLowerCase());
+  }
+
+  /**
+   * Kiểm tra xem phần tử DOM (tile / container) có phải là fruit patch / cây ăn quả không.
+   * Nếu đúng → KHÔNG được gieo hạt ruộng vào ô này.
+   */
+  const FRUIT_PATCH_IMG_RE = /orange|apple|blueberry|lemon|pear|plum|grape|banana|tomato|peach|cherry|mango|durian|olive/i;
+  const FRUIT_PATCH_SRC_RE = /\/fruit[_\-]?patch|\/fruit\/|fruit_patch|fruitPatch/i;
+
+  function isFruitPatchOrFlowerElement(el) {
+    if (!el) return false;
+
+    // 1) Kiểm tra React Fiber: nếu component tên "Fruit Patch" → chắc chắn không phải crop plot
+    try {
+      const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber"));
+      if (fiberKey) {
+        let f = el[fiberKey];
+        for (let depth = 0; depth < 40 && f; depth += 1) {
+          const sources = [f.memoizedProps, f.pendingProps];
+          for (let si = 0; si < sources.length; si += 1) {
+            const p = sources[si];
+            if (!p || typeof p !== "object") continue;
+            const name = String(p.name || "").trim();
+            if (
+              name === "Fruit Patch" ||
+              name === "Flower Bed" ||
+              name === "Flower" ||
+              name === "Greenhouse Pot" ||
+              name === "Beehive"
+            ) {
+              return true;
+            }
+            // Crop Plot → chắc chắn là ruộng
+            if (name === "Crop Plot") return false;
+          }
+          f = f.return;
+        }
+      }
+    } catch (_e) {
+      // ignore
+    }
+
+    // 2) Kiểm tra ảnh bên trong: có ảnh quả / hoa?
+    let html = "";
+    try {
+      html = String(el.innerHTML || "").toLowerCase();
+    } catch (_e) {
+      return false;
+    }
+    if (html.includes("/flowers/") || html.includes("flowers/")) return true;
+    if (FRUIT_PATCH_SRC_RE.test(html)) return true;
+
+    let imgs;
+    try {
+      imgs = el.querySelectorAll("img[src], img[srcset]");
+    } catch (_e) {
+      return false;
+    }
+    for (let i = 0; i < imgs.length; i += 1) {
+      const src = String(imgs[i].currentSrc || imgs[i].getAttribute("src") || "").toLowerCase();
+      if (src.includes("fruit") && !src.includes("soil")) return true;
+      if (FRUIT_PATCH_IMG_RE.test(src)) return true;
+      const alt = String(imgs[i].getAttribute("alt") || "").trim();
+      if (alt.length >= 3 && FRUIT_PATCH_IMG_RE.test(alt)) return true;
+    }
+
+    return false;
   }
 
   /** Dự phòng khi CDN đổi path: vẫn loại URL giai đoạn cây. */
@@ -636,6 +705,8 @@
         if (!container || plotHtmlHasGrowingCrop(container)) continue;
         const root = plotRootFromInner(img);
         if (!root || !d.isVisible(root) || !d.isInViewportLoose(root, VIEWPORT_PAD_PLOT)) continue;
+        // ── Bỏ qua fruit patch / hoa / nhà kính ──
+        if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
         if (!pk || bridgeIdx.occupied.has(pk)) continue;
         const dist = d.centerDistance(root);
@@ -741,6 +812,8 @@
         if (!container || plotHtmlHasGrowingCrop(container)) continue;
         const root = plotRootFromInner(img);
         if (!root || !d.isVisible(root) || !d.isInViewportLoose(root, VIEWPORT_PAD_PLOT)) continue;
+        // ── Bỏ qua fruit patch / hoa / nhà kính ──
+        if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
           const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
           if (pk && bridgeIdx.occupied.has(pk)) continue;
@@ -794,6 +867,8 @@
         if (!container || plotHtmlHasGrowingCrop(container)) continue;
         const root = plotRootFromInner(img);
         if (!root || !d.isVisible(root) || !d.isInViewportLoose(root, pad)) continue;
+        // ── Bỏ qua fruit patch / hoa / nhà kính ──
+        if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
           const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
           if (pk && bridgeIdx.occupied.has(pk)) continue;
@@ -1598,21 +1673,16 @@
 
     // ── Smart cache ──
     // Khi có cache (đã chọn hạt trước đó):
-    //   - Inventory đóng → tin cache, return ngay (không mở UI)
-    //   - Inventory mở  → đóng lại, tin cache (không re-select, tránh spam)
-    // Safety net: "Wrong seed" dialog sẽ clear cache nếu hạt sai mùa/sai item.
+    //   - Tin cache, return ngay (không mở UI lại) — kể cả khi luồng khác đã chạy xen kẽ.
+    //   - Inventory mở → đóng lại, tin cache (không re-select, tránh spam).
+    // Cache chỉ bị xóa khi: đổi mùa (tryOneFarmStep reset), dialog "Wrong seed",
+    //   hoặc tên hạt gieo thay đổi (seedName khác cache).
     if (runtime.cropDomLastSelectedSeedName === seedName) {
-      const la = String(runtime.lastAction || "");
-      if (la && !la.startsWith("crop_") && la !== "reward_captcha_resolve") {
-        logFlow("Ruộng DOM: luồng khác vừa chạy (" + la + ") — xóa cache hạt để chọn lại", {});
-        runtime.cropDomLastSelectedSeedName = null;
-      } else {
-        if (isInventorySeedStripVisible()) {
-          // User mở giỏ thủ công hoặc giỏ chưa đóng → đóng lại, tin cache
-          await closeInventorySeedStripIfOpen();
-        }
-        return true;
+      if (isInventorySeedStripVisible()) {
+        // User mở giỏ thủ công hoặc giỏ chưa đóng → đóng lại, tin cache
+        await closeInventorySeedStripIfOpen();
       }
+      return true;
     }
 
     // ── Mở inventory nếu chưa mở (cần thấy selectbox để verify) ──
@@ -2339,6 +2409,12 @@
 
     if (!targetRoot) {
       logThrottled("crop_dom_skip_occupied", 8000, "Tất cả ô đất trên màn hình đều đã gieo hạt (đang chờ hình ảnh cập nhật)", {});
+      return "no_plots";
+    }
+
+    // ── Kiểm tra lần cuối: không gieo vào fruit patch / hoa / nhà kính ──
+    if (isFruitPatchOrFlowerElement(targetRoot)) {
+      logFlow("Ruộng DOM: bỏ qua ô — phát hiện fruit patch / hoa (không phải crop plot)", {});
       return "no_plots";
     }
     
@@ -3556,6 +3632,7 @@
       runtime.cropDomLastSeasonKey = seasonKey;
       runtime.cropDomBuyCursor = 0;
       runtime.cropDomSkipBuySeedsUntil = 0;
+      runtime.cropDomLastSelectedSeedName = null;
       logFlow("Ruộng DOM: phát hiện mùa mới — reset cursor mua hạt", { seasonKey });
     }
 

@@ -322,8 +322,6 @@
     }
 
     const configs = getEnabledCookingConfigs();
-    const buildings = Array.isArray(latestBridgeState.buildings) ? latestBridgeState.buildings : [];
-    const inventory = { ...(latestBridgeState.inventory || {}) };
     const t = nowMs();
 
     // Đã gỡ bỏ chặn nấu ăn sớm theo thời tiết. 
@@ -331,6 +329,35 @@
 
     let actionCount = 0;
     const cookDiag = [];
+
+    // Nếu state cũ hơn 15 giây, chủ động refresh để tránh bỏ sót món đã chín
+    const stateAgeMs = nowMs() - (bridge.stateUpdatedAt || 0);
+    if (stateAgeMs > 15000) {
+      await bridge.requestState?.().catch(() => {});
+      const fresh = bridge.getLatestState?.();
+      if (fresh) latestBridgeState = fresh;
+    }
+
+    // Trích xuất buildings/inventory SAU khi refresh state
+    const buildings = Array.isArray(latestBridgeState.buildings) ? latestBridgeState.buildings : [];
+    const inventory = { ...(latestBridgeState.inventory || {}) };
+
+    // === DIAGNOSTIC LOG (xóa sau khi debug xong) ===
+    logCookThrottled("cook_diag_buildings", 30000, "🍳 [DIAG] buildings từ bridge", {
+      buildingsCount: buildings.length,
+      buildingNames: buildings.map((g) => g.name),
+      configs: configs.map((c) => c.name),
+      buildingSample: buildings.slice(0, 3).map((g) => ({
+        name: g.name,
+        itemCount: Array.isArray(g.items) ? g.items.length : "NOT_ARRAY:" + typeof g.items,
+        items: (g.items || []).slice(0, 2).map((it) => ({
+          id: it.id,
+          queueLen: Array.isArray(it.craftingQueue) ? it.craftingQueue.length : "NOT_ARRAY",
+          queue: it.craftingQueue,
+        })),
+      })),
+    });
+    // === END DIAGNOSTIC ===
 
     if (shouldSkipCookWorkThisTick(latestBridgeState, t, configs, buildings, inventory)) {
       syncCookScheduleFromState(latestBridgeState, t);
@@ -380,8 +407,20 @@
             actionCount += 1;
             await bridge.requestState?.().catch(() => {});
             const fresh = bridge.getLatestState?.();
-            if (fresh) latestBridgeState = fresh;
-            Object.assign(inventory, fresh?.inventory || {});
+            if (fresh) {
+              latestBridgeState = fresh;
+              Object.assign(inventory, fresh.inventory || {});
+            }
+            // Sau collect, lò vừa rỗng ra — thử bắt đầu nấu ngay (không continue)
+            const freshInstance = latestBridgeState?.buildings
+              ?.find((g) => g.name === config.name)
+              ?.items?.find((it) => String(it.id) === String(buildingId));
+            const freshQueue = freshInstance ? getCraftingQueue(freshInstance) : [];
+            if (freshQueue.length <= 0) {
+              // Lò rỗng → fallthrough xuống isIdle để nấu ngay
+            } else {
+              continue;
+            }
           } else if (res?.error) {
             const errStr = String(res.error).toLowerCase();
             if (errStr.includes("locked") || errStr.includes("weather")) {
@@ -390,11 +429,22 @@
               runtime.cookFlowState = "Bếp bị khóa / Lỗi thời tiết";
               return false;
             }
+            continue;
+          } else {
+            continue;
           }
-          continue;
         }
 
-        if (isIdle) {
+        // isIdle dùng queue ban đầu; nếu vừa collect fallthrough xuống đây thì tính lại từ freshQueue
+        const effectiveIsIdle = isIdle || (() => {
+          if (!isFinished) return false;
+          const fi = latestBridgeState?.buildings
+            ?.find((g) => g.name === config.name)
+            ?.items?.find((it) => String(it.id) === String(buildingId));
+          return fi ? getCraftingQueue(fi).length <= 0 : false;
+        })();
+
+        if (effectiveIsIdle) {
           const recipe = getBestAutoCookRecipe(config.recipes, inventory);
           if (recipe) {
             logFlow(`👨‍🍳 Bắt đầu nấu ${recipe.item} tại ${config.name}`, { buildingId, recipe });

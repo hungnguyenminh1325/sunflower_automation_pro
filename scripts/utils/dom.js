@@ -116,20 +116,38 @@
    * Frame con: gần như luôn chạy khi tab đang /play — tránh false negative do heuristic.
    */
   d.shouldRunAutomationInThisFrame = function shouldRunAutomationInThisFrame() {
-    if (!d.isOnPlayPage()) return false;
+    const onPlay = d.isOnPlayPage();
+    if (!onPlay) return false;
+    
     if (window !== window.top) {
       try {
-        const deep = document.body ? document.body.getElementsByTagName("*").length : 0;
+        const body = document.body;
+        const deep = body ? body.getElementsByTagName("*").length : 0;
         const hasTile = !!document.querySelector(".relative.w-full.h-full");
         const hasImg = !!document.querySelector("img[src], img[srcset]");
-        if (deep < 25 && !hasTile && !hasImg) return false;
+        
+        // If it's an iframe, we want to be sure it's the game frame.
+        // If it's too empty, it's probably not the game yet.
+        if (deep < 15 && !hasTile && !hasImg) return false;
       } catch (_e) {
-        // ignore
+        // Cross-origin: if we are here, manifest matched, so it's likely our frame.
       }
       return true;
     }
+    
+    // Top frame
     if (d.isLikelyGameFarmDocument(document)) return true;
-    if (document.querySelector("iframe")) return false;
+    
+    const hasIframe = !!document.querySelector("iframe");
+    if (hasIframe) {
+      // If there is an iframe, we assume the game is in the iframe.
+      // We log this once to help user debug.
+      if (!window._sfl_frame_logged) {
+        console.log("[SFL UI] Detected iframe, delegating automation to frame content script.");
+        window._sfl_frame_logged = true;
+      }
+      return false;
+    }
     return true;
   };
 

@@ -30,6 +30,7 @@
         "scripts/state.js",
         "scripts/utils/dom.js",
         "scripts/utils/time.js",
+        "scripts/utils/flow-scheduler.js",
         "scripts/settings.js",
         "scripts/bridge/game-bridge.js",
         "scripts/flows/workbench.js",
@@ -42,7 +43,7 @@
         "scripts/automation.js",
         "scripts/bootstrap.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ],
   "action": {

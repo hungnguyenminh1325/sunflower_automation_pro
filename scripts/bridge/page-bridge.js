@@ -557,24 +557,35 @@
 			})),
 			inventory: serializeInventory(state.inventory),
 			stock: serializeInventory(state.stock),
-			buildings: toList(state.buildings, (name, list) => ({
-				name,
-				items: (list || []).map((b) => ({
-					id: String(b.id || ""),
-					readyAt: toSafeNumber(b.readyAt),
-					craftingQueue: Array.isArray(b.crafting)
-						? b.crafting.map((entry) => ({
-								item: String(entry?.name || entry?.item || ""),
-								readyAt: toSafeNumber(entry?.readyAt),
-							}))
-						: b.crafting
-							? [{
-									item: String(b.crafting?.name || b.crafting?.item || ""),
-									readyAt: toSafeNumber(b.crafting?.readyAt),
-							  }]
-							: [],
-				})),
-			})),
+			buildings: (() => {
+				// state.buildings có thể là object-map { name: [inst,...] } HOẶC { name: { id: inst } }
+				// toList duyệt Object.entries(state.buildings) → (name, value)
+				// value có thể là Array hoặc Object → cần normalize về array
+				function toBuildingItemArray(list) {
+					if (!list) return [];
+					if (Array.isArray(list)) return list;
+					// Object-map dạng { "123": { id, crafting, ... } }
+					return Object.values(list);
+				}
+				return toList(state.buildings, (name, list) => ({
+					name,
+					items: toBuildingItemArray(list).map((b) => ({
+						id: String(b.id || ""),
+						readyAt: toSafeNumber(b.readyAt),
+						craftingQueue: Array.isArray(b.crafting)
+							? b.crafting.map((entry) => ({
+									item: String(entry?.name || entry?.item || ""),
+									readyAt: toSafeNumber(entry?.readyAt),
+								}))
+							: b.crafting
+								? [{
+										item: String(b.crafting?.name || b.crafting?.item || ""),
+										readyAt: toSafeNumber(b.crafting?.readyAt),
+								  }]
+								: [],
+					})),
+				}));
+			})(),
 			oilReserves: Object.keys(state.oilReserves || {}),
 			farmActivity: serializeFarmActivity(state.farmActivity),
 			season: String(state?.season?.season || "spring"),

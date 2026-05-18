@@ -140,7 +140,27 @@
   }
 
   window.addEventListener("message", handleBridgeMessage);
-  injectBridge();
+  
+  let injectionRetries = 0;
+  function safeInjectBridge() {
+    if (bridgeReady) return;
+    if (injectionRetries >= 5) {
+      console.error("[SFL UI] Bridge injection failed after multiple attempts.");
+      return;
+    }
+    injectionRetries += 1;
+    console.log(`[SFL UI] Injecting bridge (attempt ${injectionRetries})...`);
+    injectBridge();
+    
+    // Retry if not ready in 6 seconds
+    setTimeout(() => {
+      if (!bridgeReady && S.dom.isOnPlayPage()) {
+        safeInjectBridge();
+      }
+    }, 6000);
+  }
+
+  safeInjectBridge();
 
   // ═══════ Captcha Grid Reader (qua MAIN world bridge) ═══════
   let pendingCaptchaGridResolvers = new Map();

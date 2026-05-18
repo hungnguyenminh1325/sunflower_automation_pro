@@ -62,6 +62,12 @@
     cropDomSkipBuySeedsUntil: 0,
     lastPetalActionAt: 0,
     petalHarvestState: "Tạm tắt",
+    /** Thời điểm nghỉ thông minh: luồng cây, đá, ruộng, hoa — chờ tài nguyên hồi phục. */
+    treeFlowResumeAt: 0,
+    rockFlowResumeAt: 0,
+    cropFlowResumeAt: 0,
+    cropFlowState: "Tạm tắt",
+    petalFlowResumeAt: 0,
     /** Đồng bộ từ storage: số lần tải lại để thoát captcha Goblin/Moon. */
     captchaGoblinMoonReloadSkipCount: 0,
     /** Số lần giải captcha Goblin/Moon thành công. */

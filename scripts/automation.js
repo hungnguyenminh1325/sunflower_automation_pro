@@ -53,6 +53,11 @@
       runtime.currentSequenceStep = "mushroom";
       runtime.lastPetalActionAt = 0;
       runtime.lastCropDomActionAt = 0;
+      // Reset thời gian nghỉ thông minh
+      runtime.treeFlowResumeAt = 0;
+      runtime.rockFlowResumeAt = 0;
+      runtime.cropFlowResumeAt = 0;
+      runtime.petalFlowResumeAt = 0;
       S.time.logFlow("Route watcher: trở về farm route — bắt đầu lại vòng lặp", {
         href: String(window.location.href || "").slice(0, 80),
       });
@@ -207,8 +212,9 @@
         await S.cropDom.tryExpandIslandViaEvent();
       }
 
-      // --- Sequential State Machine ---
+      // --- Sequential State Machine (với thời gian nghỉ thông minh) ---
       runtime.currentSequenceStep = runtime.currentSequenceStep || "mushroom";
+      const sched = S.flowScheduler;
 
       let checkedCount = 0;
       while (checkedCount < 6) {
@@ -237,6 +243,15 @@
         } 
         else if (runtime.currentSequenceStep === "tree") {
           if (runtime.settings.autoChop) {
+            // ── Kiểm tra xem luồng cây có đang nghỉ (chờ hồi phục) không ──
+            if (runtime.treeFlowResumeAt && S.time.now() < runtime.treeFlowResumeAt) {
+              const leftMs = runtime.treeFlowResumeAt - S.time.now();
+              runtime.treeFlowState = `Nghỉ — cây hồi phục sau ${sched.formatDuration(leftMs)}`;
+              runtime.currentSequenceStep = "mine";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.treeFlowResumeAt = 0;
             runtime.treeFlowState = "Đang chạy";
             let treeSteps = 0;
             let treeIdleRetries = 0;
@@ -274,8 +289,30 @@
               runtime.lastTreeActionAt = S.time.now();
               runtime.lastActionAt = runtime.lastTreeActionAt;
               S.time.logFlow("Luồng cây: đã chặt", { steps: treeSteps });
+              // Sau khi chặt xong, tính thời gian nghỉ thông minh
+              if (sched) {
+                const treeRest = sched.computeTreeRestSchedule();
+                if (!treeRest.allReady && treeRest.nextAt > S.time.now()) {
+                  runtime.treeFlowResumeAt = treeRest.nextAt;
+                  const waitLabel = sched.formatDuration(treeRest.nextAt - S.time.now());
+                  runtime.treeFlowState = `Nghỉ — ${treeRest.reason}`;
+                  S.time.logFlow("🌳 Luồng cây: nghỉ thông minh", { reason: treeRest.reason, resumeIn: waitLabel });
+                }
+              }
             } else {
-              runtime.treeFlowState = "Chờ tới lượt";
+              // Không làm được gì → tính thời gian nghỉ
+              if (sched) {
+                const treeRest = sched.computeTreeRestSchedule();
+                if (!treeRest.allReady && treeRest.nextAt > S.time.now()) {
+                  runtime.treeFlowResumeAt = treeRest.nextAt;
+                  runtime.treeFlowState = `Nghỉ — ${treeRest.reason}`;
+                  S.time.logFlow("🌳 Luồng cây: nghỉ thông minh (không có cây)", { reason: treeRest.reason, resumeIn: sched.formatDuration(treeRest.nextAt - S.time.now()) });
+                } else {
+                  runtime.treeFlowState = "Chờ tới lượt";
+                }
+              } else {
+                runtime.treeFlowState = "Chờ tới lượt";
+              }
             }
           } else {
             runtime.treeFlowState = "Tạm tắt";
@@ -284,6 +321,15 @@
         }
         else if (runtime.currentSequenceStep === "mine") {
           if (runtime.settings.autoMine) {
+            // ── Kiểm tra xem luồng đá có đang nghỉ không ──
+            if (runtime.rockFlowResumeAt && S.time.now() < runtime.rockFlowResumeAt) {
+              const leftMs = runtime.rockFlowResumeAt - S.time.now();
+              runtime.rockFlowState = `Nghỉ — đá hồi phục sau ${sched.formatDuration(leftMs)}`;
+              runtime.currentSequenceStep = "crop";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.rockFlowResumeAt = 0;
             runtime.rockFlowState = "Đang chạy";
             let rockSteps = 0;
             for (let step = 0; step < 40; step += 1) {
@@ -305,8 +351,29 @@
               runtime.lastRockActionAt = S.time.now();
               runtime.lastActionAt = runtime.lastRockActionAt;
               S.time.logFlow("Luồng đá: đã đào", { steps: rockSteps });
+              // Tính thời gian nghỉ thông minh
+              if (sched) {
+                const rockRest = sched.computeRockRestSchedule();
+                if (!rockRest.allReady && rockRest.nextAt > S.time.now()) {
+                  runtime.rockFlowResumeAt = rockRest.nextAt;
+                  const waitLabel = sched.formatDuration(rockRest.nextAt - S.time.now());
+                  runtime.rockFlowState = `Nghỉ — ${rockRest.reason}`;
+                  S.time.logFlow("⛏️ Luồng đá: nghỉ thông minh", { reason: rockRest.reason, resumeIn: waitLabel, readyByKind: rockRest.readyByKind });
+                }
+              }
             } else {
-              runtime.rockFlowState = "Chờ tới lượt";
+              if (sched) {
+                const rockRest = sched.computeRockRestSchedule();
+                if (!rockRest.allReady && rockRest.nextAt > S.time.now()) {
+                  runtime.rockFlowResumeAt = rockRest.nextAt;
+                  runtime.rockFlowState = `Nghỉ — ${rockRest.reason}`;
+                  S.time.logFlow("⛏️ Luồng đá: nghỉ thông minh (không có node)", { reason: rockRest.reason, resumeIn: sched.formatDuration(rockRest.nextAt - S.time.now()), readyByKind: rockRest.readyByKind });
+                } else {
+                  runtime.rockFlowState = "Chờ tới lượt";
+                }
+              } else {
+                runtime.rockFlowState = "Chờ tới lượt";
+              }
             }
           } else {
             runtime.rockFlowState = "Tạm tắt";
@@ -315,6 +382,15 @@
         }
         else if (runtime.currentSequenceStep === "crop") {
           if (runtime.settings.autoFarmCropsDom && typeof S.cropDom?.tryOneFarmStep === "function") {
+            // ── Kiểm tra xem luồng ruộng có đang nghỉ không ──
+            if (runtime.cropFlowResumeAt && S.time.now() < runtime.cropFlowResumeAt) {
+              const leftMs = runtime.cropFlowResumeAt - S.time.now();
+              runtime.cropFlowState = `Nghỉ — cây chín sau ${sched.formatDuration(leftMs)}`;
+              runtime.currentSequenceStep = "petal";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.cropFlowResumeAt = 0;
             for (let cstep = 0; cstep < 22; cstep += 1) {
               const didCrop = await S.cropDom.tryOneFarmStep();
               if (!didCrop) break;
@@ -322,11 +398,28 @@
               runtime.lastCropDomActionAt = S.time.now();
               await S.time.sleep(S.time.rand(200, 420));
             }
+            if (!didWork && sched) {
+              const cropRest = sched.computeCropRestSchedule();
+              if (!cropRest.hasReadyCrops && !cropRest.hasEmptyPlots && cropRest.nextAt > S.time.now()) {
+                runtime.cropFlowResumeAt = cropRest.nextAt;
+                runtime.cropFlowState = `Nghỉ — ${cropRest.reason}`;
+                S.time.logFlow("🌾 Luồng ruộng: nghỉ thông minh", { reason: cropRest.reason, resumeIn: sched.formatDuration(cropRest.nextAt - S.time.now()) });
+              }
+            }
           }
           if (!didWork) runtime.currentSequenceStep = "petal";
         }
         else if (runtime.currentSequenceStep === "petal") {
           if (runtime.settings.autoPetalHarvestDom && typeof S.petalDom?.tryOnePetalStep === "function") {
+            // ── Kiểm tra xem luồng hoa/quả có đang nghỉ không ──
+            if (runtime.petalFlowResumeAt && S.time.now() < runtime.petalFlowResumeAt) {
+              const leftMs = runtime.petalFlowResumeAt - S.time.now();
+              runtime.petalHarvestState = `Nghỉ — quả hồi phục sau ${sched.formatDuration(leftMs)}`;
+              runtime.currentSequenceStep = "cook";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.petalFlowResumeAt = 0;
             runtime.petalHarvestState = "Đang chạy";
             for (let pstep = 0; pstep < 14; pstep += 1) {
               const didP = await S.petalDom.tryOnePetalStep();
@@ -335,7 +428,20 @@
               runtime.lastPetalActionAt = S.time.now();
               await S.time.sleep(S.time.rand(200, 420));
             }
-            if (!didWork) runtime.petalHarvestState = "Chờ tới lượt";
+            if (!didWork) {
+              if (sched) {
+                const petalRest = sched.computePetalRestSchedule();
+                if (!petalRest.hasReady && petalRest.nextAt > S.time.now()) {
+                  runtime.petalFlowResumeAt = petalRest.nextAt;
+                  runtime.petalHarvestState = `Nghỉ — ${petalRest.reason}`;
+                  S.time.logFlow("🌸 Luồng hoa/quả: nghỉ thông minh", { reason: petalRest.reason, resumeIn: sched.formatDuration(petalRest.nextAt - S.time.now()) });
+                } else {
+                  runtime.petalHarvestState = "Chờ tới lượt";
+                }
+              } else {
+                runtime.petalHarvestState = "Chờ tới lượt";
+              }
+            }
           } else {
             runtime.petalHarvestState = "Tạm tắt";
           }
@@ -344,6 +450,16 @@
         else if (runtime.currentSequenceStep === "cook") {
           const cookEnabled = typeof S.cook?.isCookEnabled === "function" && S.cook.isCookEnabled();
           if (cookEnabled && S.gameBridge?.isReady) {
+            // ── Kiểm tra xem luồng nấu có đang nghỉ (chờ món chín) không ──
+            const tNow = S.time.now();
+            if (runtime.nextCookFlowAt && tNow < runtime.nextCookFlowAt) {
+              if (typeof S.cook.refreshCookWaitingLabel === "function") {
+                S.cook.refreshCookWaitingLabel(tNow);
+              }
+              runtime.currentSequenceStep = "mushroom";
+              checkedCount += 1;
+              continue;
+            }
             try {
               runtime.cookFlowState = "Đang chạy";
               const cookActed = !!(await S.cook.runCookCycle());
@@ -435,6 +551,12 @@
     
     runtime.currentSequenceStep = "mushroom";
 
+    // Reset tất cả thời gian nghỉ thông minh → các luồng chạy ngay
+    runtime.treeFlowResumeAt = 0;
+    runtime.rockFlowResumeAt = 0;
+    runtime.cropFlowResumeAt = 0;
+    runtime.petalFlowResumeAt = 0;
+
     // Force reset state in case it hangs
     runtime.busy = false;
     runtime._shopAutomationHold = 0;
@@ -444,163 +566,7 @@
 
   setInterval(triggerHeartbeat, HEARTBEAT_INTERVAL_MS);
 
-  // ── BẢNG TỔNG HỢP TÀI NGUYÊN HÀNG NGÀY ──
-  // Snapshot farmActivity khi tool khởi động; mỗi heartbeat tính delta và in bảng.
-  // Reset tự động khi reload trang (7h sáng hoặc thủ công).
 
-  let dailyFarmActivitySnapshot = null;
-  let dailySnapshotCoins = null;
-  let dailySnapshotAt = 0;
-
-  /** Chụp snapshot farmActivity + coins lần đầu từ bridge. */
-  function captureDailySnapshot() {
-    if (dailyFarmActivitySnapshot) return; // đã chụp rồi
-    const st = S.gameBridge?.getLatestState?.();
-    if (!st?.farmActivity) return;
-    dailyFarmActivitySnapshot = Object.assign({}, st.farmActivity);
-    dailySnapshotCoins = typeof st.coins === "number" ? st.coins : null;
-    dailySnapshotAt = S.time.now();
-    S.time.logFlow("📊 Bảng tổng hợp: đã chụp snapshot farmActivity ban đầu", {
-      keys: Object.keys(dailyFarmActivitySnapshot).length,
-      coins: dailySnapshotCoins,
-    });
-  }
-
-  /**
-   * Phân loại key farmActivity: "Harvested" / "Planted" / "Crafted" / "Mined" / "Cooked" / …
-   * Trả về { action, resource }
-   * Ví dụ: "Sunflower Harvested" → { action: "Harvested", resource: "Sunflower" }
-   */
-  function parseFarmActivityKey(key) {
-    const parts = String(key || "").trim().split(/\s+/);
-    if (parts.length < 2) return { action: key, resource: key };
-    const action = parts[parts.length - 1]; // last word = verb
-    const resource = parts.slice(0, -1).join(" ");
-    return { action, resource };
-  }
-
-  /** Nhóm tài nguyên: cộng (thu được) / trừ (tiêu hao). */
-  const GAIN_ACTIONS = new Set([
-    "Harvested", "Collected", "Mined", "Caught", "Received", "Found", "Opened",
-  ]);
-  const SPEND_ACTIONS = new Set([
-    "Planted", "Crafted", "Cooked", "Fed", "Used", "Bought", "Sold", "Spent",
-  ]);
-
-  function logDailyResourceSummary() {
-    if (!dailyFarmActivitySnapshot) return;
-    const st = S.gameBridge?.getLatestState?.();
-    if (!st?.farmActivity) return;
-
-    const current = st.farmActivity;
-    const snapshot = dailyFarmActivitySnapshot;
-
-    // Tính delta cho mỗi key
-    const allKeys = new Set([...Object.keys(current), ...Object.keys(snapshot)]);
-    const gains = {}; // resource → count (thu được)
-    const spends = {}; // resource → count (tiêu hao)
-    const others = {}; // resource → count (khác)
-
-    for (const key of allKeys) {
-      const cur = Math.floor(Number(current[key]) || 0);
-      const prev = Math.floor(Number(snapshot[key]) || 0);
-      const delta = cur - prev;
-      if (delta === 0) continue;
-
-      const { action, resource } = parseFarmActivityKey(key);
-      if (GAIN_ACTIONS.has(action)) {
-        gains[resource] = (gains[resource] || 0) + delta;
-      } else if (SPEND_ACTIONS.has(action)) {
-        spends[resource] = (spends[resource] || 0) + delta;
-      } else {
-        others[key] = delta;
-      }
-    }
-
-    // Xu (coins)
-    const coinsDelta = (typeof st.coins === "number" && dailySnapshotCoins !== null)
-      ? Math.round((st.coins - dailySnapshotCoins) * 100) / 100
-      : null;
-
-    // Tính thời gian chạy
-    const elapsedMs = S.time.now() - dailySnapshotAt;
-    const elapsedMin = Math.floor(elapsedMs / 60000);
-    const elapsedH = Math.floor(elapsedMin / 60);
-    const elapsedM = elapsedMin % 60;
-    const elapsedLabel = elapsedH > 0 ? elapsedH + "h" + (elapsedM > 0 ? elapsedM + "p" : "") : elapsedM + " phút";
-
-    // Format bảng
-    const lines = [];
-    lines.push("╔══════════════════════════════════════════════════╗");
-    lines.push("║       📊 TỔNG HỢP TÀI NGUYÊN — " + elapsedLabel + " qua       ║");
-    lines.push("╠══════════════════════════════════════════════════╣");
-
-    const gainKeys = Object.keys(gains).sort();
-    const spendKeys = Object.keys(spends).sort();
-    const otherKeys = Object.keys(others).sort();
-
-    if (gainKeys.length > 0) {
-      lines.push("║  ✅ THU ĐƯỢC:                                    ║");
-      for (const r of gainKeys) {
-        const v = gains[r];
-        const label = ("     " + r).slice(-30);
-        const val = ("+" + v).padStart(8);
-        lines.push("║  " + label + "  " + val + "          ║");
-      }
-    }
-
-    if (spendKeys.length > 0) {
-      lines.push("║  ❌ TIÊU HAO:                                    ║");
-      for (const r of spendKeys) {
-        const v = spends[r];
-        const label = ("     " + r).slice(-30);
-        const val = ("-" + v).padStart(8);
-        lines.push("║  " + label + "  " + val + "          ║");
-      }
-    }
-
-    if (otherKeys.length > 0) {
-      lines.push("║  📋 KHÁC:                                        ║");
-      for (const k of otherKeys) {
-        const v = others[k];
-        const label = ("     " + k).slice(-30);
-        const sign = v > 0 ? "+" : "";
-        const val = (sign + v).padStart(8);
-        lines.push("║  " + label + "  " + val + "          ║");
-      }
-    }
-
-    if (coinsDelta !== null) {
-      lines.push("╠══════════════════════════════════════════════════╣");
-      const sign = coinsDelta >= 0 ? "+" : "";
-      lines.push("║  💰 Xu (coins):           " + (sign + coinsDelta).padStart(12) + "          ║");
-    }
-
-    if (gainKeys.length === 0 && spendKeys.length === 0 && otherKeys.length === 0 && coinsDelta === null) {
-      lines.push("║  (chưa có hoạt động nào)                         ║");
-    }
-
-    lines.push("╚══════════════════════════════════════════════════╝");
-
-    console.log("\n" + lines.join("\n"));
-
-    // Cũng log qua logFlow để lưu vào hệ thống log
-    const summary = {};
-    if (gainKeys.length > 0) summary["Thu được"] = gains;
-    if (spendKeys.length > 0) summary["Tiêu hao"] = spends;
-    if (otherKeys.length > 0) summary["Khác"] = others;
-    if (coinsDelta !== null) summary["Xu"] = coinsDelta;
-    S.time.logFlow("📊 Tổng hợp tài nguyên (" + elapsedLabel + ")", summary);
-  }
-
-  // Chụp snapshot ngay khi bridge sẵn sàng (thử mỗi 5 giây cho đến khi có)
-  const snapshotTimer = setInterval(() => {
-    captureDailySnapshot();
-    if (dailyFarmActivitySnapshot) clearInterval(snapshotTimer);
-  }, 5000);
-
-  // Log bảng tổng hợp mỗi heartbeat (3 phút)
-  setInterval(logDailyResourceSummary, HEARTBEAT_INTERVAL_MS);
 
   S.automation = { automationTick, scheduleAutomationTick };
 })(window.SFL);

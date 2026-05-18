@@ -1,6 +1,8 @@
 (function (S) {
   "use strict";
   const runtime = S.runtime;
+  const version = "1.0.0";
+  console.log(`%c[SFL UI] Tool v${version} loaded (at ${new Date().toLocaleTimeString()})`, "color: #00ff00; font-weight: bold;");
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "SFL_UI_GET_STATUS") {
@@ -182,6 +184,10 @@
     chrome.storage.local.get(
       [S.SETTINGS_KEY, S.SETTINGS_SCHEMA_STORAGE_KEY, S.CAPTCHA_GOBLIN_MOON_RELOAD_SKIP_COUNT_KEY],
       (result) => {
+      if (chrome.runtime.lastError) {
+        console.warn("[SFL UI] Storage error (context might be invalidated):", chrome.runtime.lastError.message);
+        return;
+      }
       const schema = Number(result?.[S.SETTINGS_SCHEMA_STORAGE_KEY]) || 0;
       let settings = S.normalizeSettings(result?.[S.SETTINGS_KEY]);
       if (schema < S.SETTINGS_SCHEMA_VERSION) {

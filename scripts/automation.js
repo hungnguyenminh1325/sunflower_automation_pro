@@ -22,6 +22,95 @@
     return did;
   }
 
+  function visibleUpdateButtonIn(root) {
+    if (!root) return null;
+    let els;
+    try {
+      els = root.querySelectorAll("a, button, span, u, p, div");
+    } catch (_e) {
+      return null;
+    }
+    for (let i = 0; i < els.length; i += 1) {
+      const el = els[i];
+      const text = String(el.textContent || "").trim().toLowerCase();
+      if (text !== "update") continue;
+      if (S.dom?.isVisible && !S.dom.isVisible(el)) continue;
+      return el;
+    }
+    return null;
+  }
+
+  function visibleUpdateRoundButtonIn(root) {
+    if (!root) return null;
+    let imgs;
+    try {
+      imgs = root.querySelectorAll('img[src*="/game-assets/ui/round_button"]');
+    } catch (_e) {
+      return null;
+    }
+    for (let i = 0; i < imgs.length; i += 1) {
+      const img = imgs[i];
+      if (S.dom?.isVisible && !S.dom.isVisible(img)) continue;
+      let target =
+        img.closest?.("button,[role='button'],.cursor-pointer,.group") ||
+        img.closest?.(".relative.flex") ||
+        img.parentElement;
+      if (!target) continue;
+      if (S.dom?.isVisible && !S.dom.isVisible(target)) continue;
+      const rect = target.getBoundingClientRect();
+      if (rect.width < 30 || rect.height < 30 || rect.width > 140 || rect.height > 140) continue;
+      return target;
+    }
+    return null;
+  }
+
+  async function tryHandleGameUpdateDialog() {
+    const docsToSearch = S.dom?.collectDocumentsForGameDom ? S.dom.collectDocumentsForGameDom() : [document];
+    for (let di = 0; di < docsToSearch.length; di += 1) {
+      const doc = docsToSearch[di];
+      const bodyText = doc.body ? doc.body.textContent || "" : "";
+      if (!bodyText.toLowerCase().includes("a new version is ready")) continue;
+
+      let scope = doc.body;
+      try {
+        const dialogs = doc.querySelectorAll('[role="dialog"],[data-headlessui-state="open"]');
+        for (let i = 0; i < dialogs.length; i += 1) {
+          const dlg = dialogs[i];
+          if (S.dom?.isVisible && !S.dom.isVisible(dlg)) continue;
+          if (String(dlg.textContent || "").toLowerCase().includes("a new version is ready")) {
+            scope = dlg;
+            break;
+          }
+        }
+      } catch (_e) {
+        // keep body scope
+      }
+
+      const roundButton = visibleUpdateRoundButtonIn(scope);
+      if (roundButton) {
+        S.time.logFlow("Phát hiện popup Update — bấm nút tròn xác nhận trước", {});
+        if (S.dom?.clickAtCenter) S.dom.clickAtCenter(roundButton);
+        else if (S.dom?.nativeClickClose) S.dom.nativeClickClose(roundButton);
+        else roundButton.click?.();
+        await S.time.sleep(S.time.rand(650, 950));
+      }
+
+      const updateBtn = visibleUpdateButtonIn(scope) || visibleUpdateButtonIn(doc.body);
+      if (updateBtn) {
+        S.time.logFlow("Phát hiện popup Update phiên bản mới, đang click Update", {});
+        if (S.dom?.clickAtCenter) S.dom.clickAtCenter(updateBtn);
+        else if (S.dom?.nativeClickClose) S.dom.nativeClickClose(updateBtn);
+        else updateBtn.click?.();
+      } else {
+        S.time.logFlow("Phát hiện yêu cầu Update phiên bản mới, tiến hành reload trang", {});
+        window.location.reload();
+      }
+      await S.time.sleep(2000);
+      return true;
+    }
+    return false;
+  }
+
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
     if (typeof S.pullAutomationFlagsFromStorage === "function") {
@@ -164,6 +253,8 @@
       }
 
       // Xử lý popup update game: "A new version is ready. Update"
+      if (await tryHandleGameUpdateDialog()) return;
+
       const docsToSearch = S.dom?.collectDocumentsForGameDom ? S.dom.collectDocumentsForGameDom() : [document];
       for (let di = 0; di < docsToSearch.length; di += 1) {
         const doc = docsToSearch[di];

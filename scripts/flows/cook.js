@@ -124,10 +124,55 @@
     });
   }
 
+  async function requestFreshCookState(bridge) {
+    await bridge?.requestState?.().catch(() => {});
+    return bridge?.getLatestState?.() || null;
+  }
+
   function getCraftingQueue(instance) {
     if (Array.isArray(instance.craftingQueue)) return instance.craftingQueue;
     if (instance.crafting) return [instance.crafting];
     return [];
+  }
+
+  function findCookBuildingInstance(state, buildingName, buildingId) {
+    return state?.buildings
+      ?.find((g) => g.name === buildingName)
+      ?.items?.find((it) => String(it.id) === String(buildingId)) || null;
+  }
+
+  function cookQueueHasReadyItem(instance, t) {
+    const q = getCraftingQueue(instance);
+    for (let i = 0; i < q.length; i += 1) {
+      const ra = toNumber(q[i]?.readyAt);
+      if (ra > 0 && ra <= t) return true;
+    }
+    return false;
+  }
+
+  async function sendCookEventWithRetry(bridge, event, verifyFn, label) {
+    const attempts = [5200, 7200];
+    let last = null;
+    for (let i = 0; i < attempts.length; i += 1) {
+      const res = await bridge.sendEvent(event, attempts[i]);
+      last = res;
+      const fresh = res?.state || (await requestFreshCookState(bridge));
+      if (fresh && verifyFn(fresh)) {
+        return { ok: true, state: fresh, verified: true };
+      }
+      if (res?.ok) return { ok: true, state: fresh, verified: false };
+
+      const err = String(res?.error || "").toLowerCase();
+      if (err.includes("locked") || err.includes("weather")) return { ok: false, error: res?.error, state: fresh };
+
+      logCookThrottled(`cook_retry_${label}_${i}`, 6000, "🍳 Event nấu chưa xác nhận — thử lại", {
+        label,
+        attempt: i + 1,
+        error: res?.error || null,
+      });
+      await new Promise((r) => setTimeout(r, 650 + i * 450));
+    }
+    return { ok: false, error: last?.error || "cook_event_not_verified", state: last?.state || null };
   }
 
   function isCookEnabled() {
@@ -394,19 +439,23 @@
             readyCount: readyRecipes.length,
             items: readyRecipes.map((entry) => entry.item),
           });
-          const res = await bridge.sendEvent(
+          const res = await sendCookEventWithRetry(
+            bridge,
             {
               type: "recipes.collected",
               building: config.name,
               buildingId,
             },
-            3000,
+            (state) => {
+              const inst = findCookBuildingInstance(state, config.name, buildingId);
+              return !inst || !cookQueueHasReadyItem(inst, nowMs());
+            },
+            "collect",
           );
 
           if (res?.ok) {
             actionCount += 1;
-            await bridge.requestState?.().catch(() => {});
-            const fresh = bridge.getLatestState?.();
+            const fresh = res.state || (await requestFreshCookState(bridge));
             if (fresh) {
               latestBridgeState = fresh;
               Object.assign(inventory, fresh.inventory || {});
@@ -449,13 +498,18 @@
           if (recipe) {
             logFlow(`👨‍🍳 Bắt đầu nấu ${recipe.item} tại ${config.name}`, { buildingId, recipe });
             const startAt = nowMs();
-            const res = await bridge.sendEvent(
+            const res = await sendCookEventWithRetry(
+              bridge,
               {
                 type: "recipe.cooked",
                 item: recipe.item,
                 buildingId,
               },
-              3000,
+              (state) => {
+                const inst = findCookBuildingInstance(state, config.name, buildingId);
+                return !!inst && getCraftingQueue(inst).length > 0;
+              },
+              "start",
             );
 
             if (res?.ok) {
@@ -463,14 +517,11 @@
               actionCount += 1;
               runtime.cookLastCookStartAt = startAt;
               runtime.cookPhaseStartedAt = startAt;
-              await bridge.requestState?.().catch(() => {});
-              const fresh = bridge.getLatestState?.();
+              const fresh = res.state || (await requestFreshCookState(bridge));
               if (fresh) {
                 latestBridgeState = fresh;
                 Object.assign(inventory, fresh.inventory || {});
-                const inst = fresh.buildings
-                  ?.find((g) => g.name === config.name)
-                  ?.items?.find((it) => String(it.id) === String(buildingId));
+                const inst = findCookBuildingInstance(fresh, config.name, buildingId);
                 const q = inst ? getCraftingQueue(inst) : [];
                 const nextRa = q.map((e) => toNumber(e?.readyAt)).filter((n) => n > t);
                 const minR = nextRa.length ? Math.min(...nextRa) : 0;

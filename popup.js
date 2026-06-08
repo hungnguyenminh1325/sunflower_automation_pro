@@ -187,7 +187,45 @@ function getGameTab() {
   });
 }
 
-function send(tabId, message) {
+const CONTENT_SCRIPT_FILES = [
+  "content.js",
+  "scripts/config.js",
+  "scripts/state.js",
+  "scripts/utils/dom.js",
+  "scripts/utils/time.js",
+  "scripts/utils/flow-scheduler.js",
+  "scripts/settings.js",
+  "scripts/bridge/game-bridge.js",
+  "scripts/flows/workbench.js",
+  "scripts/flows/wood-chop.js",
+  "scripts/flows/rock-mine.js",
+  "scripts/flows/mushroom-harvest.js",
+  "scripts/flows/cook.js",
+  "scripts/flows/crop-dom.js",
+  "scripts/flows/petal-collect-dom.js",
+  "scripts/automation.js",
+  "scripts/bootstrap.js",
+];
+
+function canRetryMissingReceiver(error) {
+  const msg = String(error || "").toLowerCase();
+  return msg.includes("receiving end does not exist") || msg.includes("could not establish connection");
+}
+
+function injectContentScripts(tabId) {
+  return new Promise((resolve) => {
+    if (!chrome.scripting?.executeScript) return resolve(false);
+    chrome.scripting.executeScript(
+      {
+        target: { tabId, allFrames: true },
+        files: CONTENT_SCRIPT_FILES,
+      },
+      () => resolve(!chrome.runtime.lastError),
+    );
+  });
+}
+
+function sendRaw(tabId, message) {
   return new Promise((resolve) => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
       if (chrome.runtime.lastError) {
@@ -197,6 +235,18 @@ function send(tabId, message) {
       resolve({ ok: true, data: response });
     });
   });
+}
+
+async function send(tabId, message) {
+  const first = await sendRaw(tabId, message);
+  if (first.ok || !canRetryMissingReceiver(first.error)) return first;
+
+  setStatus("Đang nạp lại script vào tab game...", "neutral");
+  const injected = await injectContentScripts(tabId);
+  if (!injected) return first;
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  const second = await sendRaw(tabId, message);
+  return second.ok ? second : { ...second, error: second.error || first.error };
 }
 
 function readUiSettings() {

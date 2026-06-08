@@ -420,6 +420,39 @@
   const FRUIT_PATCH_IMG_RE = /orange|apple|blueberry|lemon|pear|plum|grape|banana|tomato|peach|cherry|mango|durian|olive/i;
   const FRUIT_PATCH_SRC_RE = /\/fruit[_\-]?patch|\/fruit\/|fruit_patch|fruitPatch/i;
 
+  function normalizePlotKindName(value) {
+    return String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
+  }
+
+  function isCropPlotKindName(value) {
+    const n = normalizePlotKindName(value);
+    return n === "cropplot" || n === "fertileplot" || n.includes("cropplot") || n.includes("fertileplot");
+  }
+
+  function isNonCropPlotKindName(value) {
+    const n = normalizePlotKindName(value);
+    return (
+      n === "fruitpatch" ||
+      n.includes("fruitpatch") ||
+      n === "flowerbed" ||
+      n.includes("flowerbed") ||
+      n === "flower" ||
+      n === "flowers" ||
+      n === "greenhousepot" ||
+      n.includes("greenhousepot") ||
+      n === "greenhouse" ||
+      n === "beehive" ||
+      n.includes("beehive") ||
+      n === "beebox" ||
+      n.includes("beebox")
+    );
+  }
+
+  function fiberDisplayName(fiber) {
+    const t = fiber?.elementType || fiber?.type;
+    return String(t?.displayName || t?.name || "");
+  }
+
   function isFruitPatchOrFlowerElement(el) {
     if (!el) return false;
 
@@ -429,22 +462,17 @@
       if (fiberKey) {
         let f = el[fiberKey];
         for (let depth = 0; depth < 40 && f; depth += 1) {
+          const componentName = fiberDisplayName(f);
+          if (isNonCropPlotKindName(componentName)) return true;
+          if (isCropPlotKindName(componentName)) return false;
           const sources = [f.memoizedProps, f.pendingProps];
           for (let si = 0; si < sources.length; si += 1) {
             const p = sources[si];
             if (!p || typeof p !== "object") continue;
             const name = String(p.name || "").trim();
-            if (
-              name === "Fruit Patch" ||
-              name === "Flower Bed" ||
-              name === "Flower" ||
-              name === "Greenhouse Pot" ||
-              name === "Beehive"
-            ) {
-              return true;
-            }
+            if (isNonCropPlotKindName(name)) return true;
             // Crop Plot → chắc chắn là ruộng
-            if (name === "Crop Plot") return false;
+            if (isCropPlotKindName(name)) return false;
           }
           f = f.return;
         }
@@ -588,24 +616,31 @@
     // Bridge đã lọc ô bị chặn khỏi emptyCropPlots → ô trống không nằm trong danh sách
     // bridge = bị chặn → đánh dấu "occupied" để DOM heuristic bỏ qua.
     const bridgeEmpty = Array.isArray(st.emptyCropPlots) ? st.emptyCropPlots : [];
+    const emptyKeys = new Set();
+    if (Array.isArray(st.emptyCropPlots)) {
+      for (let i = 0; i < bridgeEmpty.length; i += 1) {
+        const key = String(bridgeEmpty[i]?.plotKey || "").trim();
+        if (key) emptyKeys.add(key);
+      }
+    }
     
     // Đếm số lượng ô trống thô (theo crops array)
     let rawEmptyCount = 0;
     for (let i = 0; i < crops.length; i += 1) {
       const p = crops[i];
+      const key = String(p?.plotKey || "").trim();
       const name = String(p?.cropName || "").trim();
       const planted = Number(p?.plantedAt) || 0;
-      if (!name && planted <= 0) rawEmptyCount += 1;
+      if (!name && planted <= 0) {
+        rawEmptyCount += 1;
+        if (!Array.isArray(st.emptyCropPlots) && key) emptyKeys.add(key);
+      }
     }
     const weather = st?.activeWeather;
     const weatherBlocking = !!(weather && weather.name && !weather.isProtected && weather.blockedPlotCount > 0);
     const hasBlockedPlots = weatherBlocking || (rawEmptyCount > bridgeEmpty.length);
 
     if (hasBlockedPlots) {
-      const bridgeEmptyKeys = new Set();
-      for (let i = 0; i < bridgeEmpty.length; i += 1) {
-        bridgeEmptyKeys.add(String(bridgeEmpty[i]?.plotKey || "").trim());
-      }
       // Ô trống theo crops array nhưng KHÔNG trong emptyCropPlots bridge = bị chặn
       for (let i = 0; i < crops.length; i += 1) {
         const p = crops[i];
@@ -614,13 +649,13 @@
         const name = String(p?.cropName || "").trim();
         const planted = Number(p?.plantedAt) || 0;
         const isEmpty = !name && planted <= 0;
-        if (isEmpty && !bridgeEmptyKeys.has(key)) {
+        if (isEmpty && !emptyKeys.has(key)) {
           occupied.add(key); // weather-blocked or infertile → treat as occupied
         }
       }
     }
 
-    return { occupied, allKeys, hasBlockedPlots };
+    return { occupied, allKeys, emptyKeys, hasBlockedPlots };
   }
 
   /**
@@ -636,21 +671,42 @@
     }
     if (!fiberKey) return null;
     let f = el[fiberKey];
+    let cropContext = false;
     for (let depth = 0; depth < 72 && f; depth += 1) {
+      const componentName = fiberDisplayName(f);
+      if (isNonCropPlotKindName(componentName)) return null;
+      if (isCropPlotKindName(componentName)) cropContext = true;
       const sources = [f.memoizedProps, f.pendingProps];
       for (let si = 0; si < sources.length; si += 1) {
         const p = sources[si];
         if (!p || typeof p !== "object") continue;
-        if (p.name === "Crop Plot" && p.id != null && String(p.id).trim()) {
-          const id = String(p.id).trim();
-          if (allKeys.has(id)) return id;
-        }
-        if (p.id != null && String(p.id).trim()) {
+        const name = String(p.name || "").trim();
+        if (isNonCropPlotKindName(name)) return null;
+        if (isCropPlotKindName(name)) cropContext = true;
+        if (cropContext && p.id != null && String(p.id).trim()) {
           const id = String(p.id).trim();
           if (allKeys.has(id)) return id;
         }
       }
       f = f.return;
+    }
+    return null;
+  }
+
+  /** Find a crop plot key from the clickable root or its soil image children. */
+  function plotKeyFromPlotRoot(root, allKeys) {
+    const direct = plotKeyFromDomEl(root, allKeys);
+    if (direct) return direct;
+    if (!root?.querySelectorAll) return null;
+    let imgs;
+    try {
+      imgs = root.querySelectorAll(SOIL_IMG_SELECTOR);
+    } catch (_e) {
+      return null;
+    }
+    for (let i = 0; i < imgs.length; i += 1) {
+      const pk = plotKeyFromDomEl(imgs[i], allKeys);
+      if (pk) return pk;
     }
     return null;
   }
@@ -707,8 +763,9 @@
         if (!root || !d.isVisible(root) || !d.isInViewportLoose(root, VIEWPORT_PAD_PLOT)) continue;
         // ── Bỏ qua fruit patch / hoa / nhà kính ──
         if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
-        const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
+        const pk = plotKeyFromPlotRoot(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
         if (!pk || bridgeIdx.occupied.has(pk)) continue;
+        if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
         const dist = d.centerDistance(root);
         const prev = map.get(pk);
         if (!prev || dist < prev.dist) map.set(pk, { root, dist });
@@ -815,17 +872,12 @@
         // ── Bỏ qua fruit patch / hoa / nhà kính ──
         if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
-          const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
-          if (pk && bridgeIdx.occupied.has(pk)) continue;
-          if (pk && !bridgeIdx.occupied.has(pk)) {
-            if (seenV.has(root)) continue;
-            seenV.add(root);
-            verified.push({ root, dist: d.centerDistance(root) });
-            continue;
-          }
-          if (seenF.has(root)) continue;
-          seenF.add(root);
-          fallback.push({ root, dist: d.centerDistance(root) });
+          const pk = plotKeyFromPlotRoot(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
+          if (!pk || bridgeIdx.occupied.has(pk)) continue;
+          if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
+          if (seenV.has(root)) continue;
+          seenV.add(root);
+          verified.push({ root, dist: d.centerDistance(root) });
           continue;
         }
         if (seenF.has(root)) continue;
@@ -870,17 +922,12 @@
         // ── Bỏ qua fruit patch / hoa / nhà kính ──
         if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
-          const pk = plotKeyFromDomEl(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
-          if (pk && bridgeIdx.occupied.has(pk)) continue;
-          if (pk && !bridgeIdx.occupied.has(pk)) {
-            if (seenV.has(root)) continue;
-            seenV.add(root);
-            verified.push({ root, dist: d.centerDistance(root) });
-            continue;
-          }
-          if (seenF.has(root)) continue;
-          seenF.add(root);
-          fallback.push({ root, dist: d.centerDistance(root) });
+          const pk = plotKeyFromPlotRoot(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
+          if (!pk || bridgeIdx.occupied.has(pk)) continue;
+          if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
+          if (seenV.has(root)) continue;
+          seenV.add(root);
+          verified.push({ root, dist: d.centerDistance(root) });
           continue;
         }
         if (seenF.has(root)) continue;
@@ -2367,6 +2414,7 @@
     await sleep(rand(180, 320));
     runtime.lastAction = "crop_harvest_dom";
     runtime.lastActionAt = now();
+    runtime.cropDomLastSelectedSeedName = null;
     logFlow("Ruộng DOM: thu hoạch (plant.png)", {});
     return true;
   }
@@ -2400,7 +2448,9 @@
     for (let i = 0; i < roots.length; i++) {
       const r = roots[i];
       if (hasKeys) {
-        const pk = plotKeyFromDomEl(r, bridgeIdx.allKeys);
+        const pk = plotKeyFromPlotRoot(r, bridgeIdx.allKeys);
+        if (!pk) continue;
+        if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
         if (pk && bridgeIdx.occupied.has(pk)) continue; // Bỏ qua ô đã có cây (do state đi trước UI)
       }
       targetRoot = r;
@@ -2418,7 +2468,7 @@
       return "no_plots";
     }
     
-    d.nativeClickClose(targetRoot) || d.click(targetRoot);
+    d.clickAtCenter(targetRoot) || d.nativeClickClose(targetRoot) || d.click(targetRoot);
     await uiJitter();
     S.gameBridge?.requestState?.().catch(() => {});
     await sleep(rand(50, 100));

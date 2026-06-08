@@ -672,6 +672,7 @@
     if (!fiberKey) return null;
     let f = el[fiberKey];
     let cropContext = false;
+    let candidateId = null;
     for (let depth = 0; depth < 72 && f; depth += 1) {
       const componentName = fiberDisplayName(f);
       if (isNonCropPlotKindName(componentName)) return null;
@@ -687,10 +688,14 @@
           const id = String(p.id).trim();
           if (allKeys.has(id)) return id;
         }
+        if (p.id != null && String(p.id).trim()) {
+          const id = String(p.id).trim();
+          if (allKeys.has(id) && !candidateId) candidateId = id;
+        }
       }
       f = f.return;
     }
-    return null;
+    return candidateId;
   }
 
   /** Find a crop plot key from the clickable root or its soil image children. */

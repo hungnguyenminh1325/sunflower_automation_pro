@@ -369,7 +369,7 @@
    *    findReadyHarvest chỉ bám plant.png; tìm ô trống chỉ bám ảnh đất (không dùng lifecycle).
    */
   const SOIL_IMG_SELECTOR =
-    'img[src*="soil2"],img[src*="volcanoSoil2"],img[src*="soil_not_fertile"],img[src*="soil_dry"],img[src*="sand_dug"]';
+    'img[src*="soil2"],img[srcset*="soil2"],img[src*="volcanoSoil2"],img[srcset*="volcanoSoil2"],img[src*="soil_not_fertile"],img[srcset*="soil_not_fertile"],img[src*="soil_dry"],img[srcset*="soil_dry"],img[src*="sand_dug"],img[srcset*="sand_dug"]';
 
   /** Chỉ ảnh đất “trơ”. Khớp CDN + game-assets; cho phép png|webp. */
   const BARE_SOIL_URL_RE =
@@ -387,6 +387,14 @@
   function isDrySoilImgUrl(u) {
     const s = String(u || "").toLowerCase();
     return DRY_INFERTILE_SOIL_URL_RE.test(s) || s.includes("soil_dry") || s.includes("soil_not_fertile");
+  }
+
+  function imgAssetUrl(img) {
+    const srcset = String(img?.getAttribute?.("srcset") || "")
+      .split(",")[0]
+      .trim()
+      .split(/\s+/)[0];
+    return String(img?.currentSrc || img?.getAttribute?.("src") || srcset || "").toLowerCase();
   }
 
   /** URL là giai đoạn cây (không phải file đất tên soil2…). */
@@ -758,7 +766,7 @@
       }
       for (let ii = 0; ii < imgs.length; ii += 1) {
         const img = imgs[ii];
-        const u = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        const u = imgAssetUrl(img);
         if (!isBareSoilImgUrlStrict(u)) continue;
         // Bỏ qua ô đất khô / infertile (thiếu giếng nước hoặc giếng chưa nâng cấp)
         if (isDrySoilImgUrl(u)) continue;
@@ -793,7 +801,7 @@
       }
       for (let ii = 0; ii < imgs.length; ii += 1) {
         const img = imgs[ii];
-        const u = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        const u = imgAssetUrl(img);
         if (!/\/crops\/[^/]+\/plant\.png|\/volcano\/crops\/[^/]+\/plant\.png/.test(u)) continue;
         const root = plotRootFromInner(img);
         if (!root || !d.isVisible(root) || !d.isInViewportLoose(root, VIEWPORT_PAD_PLOT)) continue;
@@ -849,6 +857,26 @@
   }
 
   /** Heuristic DOM khi bridge chưa sẵn sàng hoặc chưa có danh sách ô trống. */
+  function isSafeUnkeyedCropSoilRoot(root) {
+    if (!root || isFruitPatchOrFlowerElement(root)) return false;
+    let imgs;
+    try {
+      imgs = root.querySelectorAll(SOIL_IMG_SELECTOR);
+    } catch (_e) {
+      return false;
+    }
+    for (let i = 0; i < imgs.length; i += 1) {
+      const img = imgs[i];
+      const u = imgAssetUrl(img);
+      if (!isBareSoilImgUrlStrict(u) || isDrySoilImgUrl(u)) continue;
+      const container = innermostWFullHFullFromImg(img);
+      if (!container || plotHtmlHasGrowingCrop(container)) continue;
+      if (isFruitPatchOrFlowerElement(container)) continue;
+      return true;
+    }
+    return false;
+  }
+
   function findEmptyPlotRootsByDomHeuristic() {
     const bridgeIdx = buildBridgeCropIndex();
     const docs = d.collectDocumentsForGameDom();
@@ -866,7 +894,7 @@
       }
       for (let ii = 0; ii < imgs.length; ii += 1) {
         const img = imgs[ii];
-        const u = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        const u = imgAssetUrl(img);
         if (!isBareSoilImgUrlStrict(u)) continue;
         // Bỏ qua ô đất khô / infertile (thiếu giếng nước hoặc giếng chưa nâng cấp)
         if (isDrySoilImgUrl(u)) continue;
@@ -878,11 +906,19 @@
         if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
           const pk = plotKeyFromPlotRoot(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
-          if (!pk || bridgeIdx.occupied.has(pk)) continue;
-          if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
-          if (seenV.has(root)) continue;
-          seenV.add(root);
-          verified.push({ root, dist: d.centerDistance(root) });
+          if (pk) {
+            if (bridgeIdx.occupied.has(pk)) continue;
+            if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
+            if (seenV.has(root)) continue;
+            seenV.add(root);
+            verified.push({ root, dist: d.centerDistance(root) });
+            continue;
+          }
+          if (bridgeIdx.emptyKeys?.size > 0 && isSafeUnkeyedCropSoilRoot(root)) {
+            if (seenF.has(root)) continue;
+            seenF.add(root);
+            fallback.push({ root, dist: d.centerDistance(root) });
+          }
           continue;
         }
         if (seenF.has(root)) continue;
@@ -916,7 +952,7 @@
       }
       for (let ii = 0; ii < imgs.length; ii += 1) {
         const img = imgs[ii];
-        const u = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        const u = imgAssetUrl(img);
         if (!isBareSoilImgUrlLoose(u)) continue;
         // Bỏ qua ô đất khô / infertile (thiếu giếng nước hoặc giếng chưa nâng cấp)
         if (isDrySoilImgUrl(u)) continue;
@@ -928,11 +964,19 @@
         if (isFruitPatchOrFlowerElement(container) || isFruitPatchOrFlowerElement(root)) continue;
         if (bridgeIdx) {
           const pk = plotKeyFromPlotRoot(root, bridgeIdx.allKeys) || plotKeyFromDomEl(img, bridgeIdx.allKeys);
-          if (!pk || bridgeIdx.occupied.has(pk)) continue;
-          if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
-          if (seenV.has(root)) continue;
-          seenV.add(root);
-          verified.push({ root, dist: d.centerDistance(root) });
+          if (pk) {
+            if (bridgeIdx.occupied.has(pk)) continue;
+            if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
+            if (seenV.has(root)) continue;
+            seenV.add(root);
+            verified.push({ root, dist: d.centerDistance(root) });
+            continue;
+          }
+          if (bridgeIdx.emptyKeys?.size > 0 && isBareSoilImgUrlStrict(u) && isSafeUnkeyedCropSoilRoot(root)) {
+            if (seenF.has(root)) continue;
+            seenF.add(root);
+            fallback.push({ root, dist: d.centerDistance(root) });
+          }
           continue;
         }
         if (seenF.has(root)) continue;
@@ -2454,8 +2498,9 @@
       const r = roots[i];
       if (hasKeys) {
         const pk = plotKeyFromPlotRoot(r, bridgeIdx.allKeys);
-        if (!pk) continue;
-        if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
+        if (!pk) {
+          if (!isSafeUnkeyedCropSoilRoot(r)) continue;
+        } else if (bridgeIdx.emptyKeys?.size > 0 && !bridgeIdx.emptyKeys.has(pk)) continue;
         if (pk && bridgeIdx.occupied.has(pk)) continue; // Bỏ qua ô đã có cây (do state đi trước UI)
       }
       targetRoot = r;

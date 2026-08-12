@@ -34,22 +34,6 @@ Chrome extension (Manifest V3) for **Sunflower Land**: automates **tools, seeds,
 
 Tiện ích Chrome (MV3) cho **Sunflower Land**: tự động **công cụ và hạt giống** bằng **click UI thật** (DOM), có thể dùng **page bridge** để đọc trạng thái.
 
-### Tính năng (Nổi bật đến v2.13.0)
-
-- **Giao diện Obsidian SFL (v2.7 - v2.11)** — Thiết kế lại giao diện popup theo phong cách Obsidian warm-dark (`#14110c`) kết hợp tông màu vàng gold (`#f2b705`) mang đậm chất game SFL, loại bỏ hoàn toàn viền (border) cổ điển.
-- **Phông chữ Be Vietnam Pro (v2.4)** — Tích hợp bộ font chữ Be Vietnam Pro từ Google Fonts giúp hiển thị tiếng Việt sắc nét và hiện đại.
-- **Hộp kiểm Custom & Nhãn Không viền (v2.10 - v2.11)** — Thay thế toàn bộ toggle tròn thô thành các ô checkbox custom vuông vắn 16x16px thanh lịch. Các nhãn quặng (Stone, Iron, Vàng...) được thiết kế không viền, tự động đổi màu khi chọn thông qua CSS `:has()`, ẩn hoàn toàn hộp kiểm mặc định.
-- **Hợp nhất "Sunflower cơ bản" (v2.2 - v2.5)** — Gom 4 tính năng riêng biệt gồm Tự chặt cây (`autoChop`), Tự đào đá (`autoMine`), Ruộng DOM (`autoFarmCropsDom`) và Thu nấm (`autoHarvestMushrooms`) thành một công tắc duy nhất: **Sunflower cơ bản**.
-- **Tự động mua khi khởi động (v2.0)** — Tự động mua hàng loạt rìu, cuốc và hạt giống theo mùa ngay khi game tải xong và bridge sẵn sàng.
-- **Cơ chế thử lại độc lập (v2.0)** — Quá trình mua công cụ và mua hạt giống được theo dõi riêng. Nếu một trong hai luồng thất bại, bot sẽ đợi 25 giây rồi thử lại thay vì bỏ qua hoàn toàn.
-- **Bỏ các ô nhập text (v2.9)** — Xóa bỏ hoàn toàn các ô nhập liệu thủ công cho tên món ăn ưu tiên và tên hạt giống, hệ thống tự động nhận diện hạt theo mùa và nấu món tối ưu XP.
-- **Chặt bụi cây (`bush_shrub`) (v2.12)** — Hỗ trợ nhận diện và chặt tự động gốc cây loại 2 (`bush_shrub.png`).
-- **Sửa lỗi thu hoạch quả (v2.13)** — Nhận diện quả chín chính xác thông qua việc kiểm tra sự biến mất của thanh tiến trình (`empty_bar.png`), khắc phục lỗi bỏ sót quả chín của các phiên bản cũ.
-
-### Chạy thử
-
-Giống mục **Run** (tiếng Anh): load unpacked trong `chrome://extensions`, vào game, cấu hình trong popup extension.
-
 ---
 
 ## Changelog | Nhật ký thay đổi

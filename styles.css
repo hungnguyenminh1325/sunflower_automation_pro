@@ -207,11 +207,11 @@ h2 {
 .custom-checkbox {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   border: 1px solid #3f3f46;
-  background: #202026;
+  background: #18181c;
   outline: none;
   cursor: pointer;
   display: inline-flex;
@@ -224,11 +224,11 @@ h2 {
 
 .custom-checkbox:hover {
   border-color: var(--accent);
-  background: #27272a;
+  background: #202026;
 }
 
 .custom-checkbox:focus {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .custom-checkbox:checked {
@@ -238,12 +238,12 @@ h2 {
 
 .custom-checkbox:checked::after {
   content: "";
-  width: 5px;
-  height: 10px;
+  width: 4px;
+  height: 7px;
   border: solid #ffffff;
-  border-width: 0 2px 2px 0;
+  border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
-  margin-bottom: 2px;
+  margin-bottom: 1.5px;
 }
 
 .status-badge {

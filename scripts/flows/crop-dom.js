@@ -4172,6 +4172,21 @@
    * Mua hết tất cả các loại hạt giống có thể mua của mùa hiện tại (dùng khi reset 12h).
    * Không giới hạn số lượng theo ô đất trống, mua tối đa stock của cửa hàng trong tầm coins.
    */
+  async function waitForGameReady(maxWaitMs = 12000) {
+    const deadline = Date.now() + maxWaitMs;
+    while (Date.now() < deadline) {
+      try {
+        await S.gameBridge.requestState();
+      } catch (_e) { }
+      const st = S.gameBridge.getLatestState();
+      if (st && st.machineReady && !st.machineBusy) {
+        return true;
+      }
+      await sleep(500);
+    }
+    return false;
+  }
+
   async function buyAllPossibleSeedsViaEvent() {
     if (!S.gameBridge?.isReady) return { ok: false };
     logFlow("Reset Purchase: Bắt đầu mua hết hạt giống có thể mua...", {});
@@ -4209,20 +4224,46 @@
       const price = getNormalSeedBuyPriceDom(seed);
       if (price === Number.MAX_SAFE_INTEGER || coins < price) continue;
 
+      // Chờ cho đến khi game sẵn sàng (hết trạng thái autosaving/pending_actions của giao dịch trước)
+      const isReady = await waitForGameReady(15000);
+      if (!isReady) {
+        logFlow(`Reset Purchase: Game bận quá lâu, tạm bỏ qua hạt ${seed}`, {});
+        continue;
+      }
+
+      // Cập nhật lại số xu và stock mới nhất từ máy chủ sau khi game đã sẵn sàng
+      const currentSt = S.gameBridge.getLatestState();
+      if (currentSt) {
+        coins = typeof currentSt.coins === "number" && Number.isFinite(currentSt.coins) ? currentSt.coins : coins;
+        if (currentSt.stock) {
+          Object.assign(stock, currentSt.stock);
+        }
+      }
+
+      const freshAvailable = Math.floor(Number(stock[seed] || 0));
+      if (freshAvailable <= 0) continue;
+
       // Mua tối đa số lượng affordable trong stock
-      const amount = Math.min(available, Math.floor(coins / price));
+      const amount = Math.min(freshAvailable, Math.floor(coins / price));
       if (amount <= 0) continue;
 
       logFlow(`Reset Purchase: Đang tiến hành mua ${amount} hạt ${seed} (giá ${price} xu/hạt)`, {});
 
       let result;
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 6; attempt++) {
         result = await S.gameBridge.sendEvent(
           { type: "seed.bought", item: seed, amount },
-          3500
+          3200
         );
         if (result?.ok) break;
-        await sleep(600);
+
+        const errReason = String(result?.error || "unknown");
+        if (/insufficient|not_enough|no_coins|funds/i.test(errReason)) {
+          break; // Hết xu thì dừng thử lại
+        }
+        
+        const waitMs = attempt <= 2 ? 800 : attempt <= 4 ? 1200 : 1800;
+        await sleep(waitMs);
       }
 
       if (result?.ok) {
@@ -4241,7 +4282,7 @@
           }
         } else {
           coins -= amount * price;
-          stock[seed] = Math.max(0, available - amount);
+          stock[seed] = Math.max(0, freshAvailable - amount);
         }
 
         logFlow(`Reset Purchase: Đã mua thành công ${amount} hạt ${seed}`, { coinsLeft: coins });

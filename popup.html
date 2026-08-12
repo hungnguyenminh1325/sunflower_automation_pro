@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sunflower Land UI Automation · v2.0.0</title>
+    <title>Sunflower Land UI Automation</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <section class="hero-card">
         <div class="hero-copy">
           <p class="eyebrow">Sunflower Land</p>
-          <h1>Sunflower Land UI Automation</h1>
-          <p class="hero-text">v2.0.0 — UI-first automation for Sunflower Land: chop, mine, farm, workbench, and related flows.</p>
+          <h1>UI Automation</h1>
+          <p class="hero-text">v2.0.0 — UI-first automation helper</p>
         </div>
         <label class="power-switch" aria-label="Bật hoặc tắt toàn bộ">
           <input id="masterEnabled" type="checkbox" checked />
@@ -28,14 +28,13 @@
         <div class="panel-head">
           <div>
             <p class="panel-kicker">Tác vụ chính</p>
-            <h2>Tự động hóa</h2>
+            <h2>Cấu hình tự động</h2>
           </div>
         </div>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Auto mua công cụ + hạt giống</strong>
-            <small>Tự động mua tất cả rìu, cuốc tại Blacksmith và hạt giống mùa hiện tại khi khởi động app. Đồng thời xếp hàng mua thêm công cụ khi làm việc thiếu.</small>
           </span>
           <span class="toggle">
             <input id="autoBuyTools" type="checkbox" />
@@ -46,7 +45,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Restock Blacksmith khi hết stock</strong>
-            <small>Bật nếu cần bot bấm Restock khi NPC hết hàng. Tắt: vẫn craft qua Craft 1 khi đủ nguyên liệu — không còn xóa hàng chờ mua như trước.</small>
           </span>
           <span class="toggle">
             <input id="autoRestockBlacksmith" type="checkbox" />
@@ -57,7 +55,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự chặt cây</strong>
-            <small>Ưu tiên vòng lặp thu hoạch tài nguyên gỗ.</small>
           </span>
           <span class="toggle">
             <input id="autoChop" type="checkbox" checked />
@@ -68,7 +65,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự đào đá / quặng</strong>
-            <small>Tap đá đủ nhịp (thường 3) là khai thác xong. Hết cuốc: cần bật «Tự mua công cụ» ở trên để vào Workbench craft pickaxe.</small>
           </span>
           <span class="toggle">
             <input id="autoMine" type="checkbox" checked />
@@ -79,7 +75,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự nấu Fire Pit (bridge)</strong>
-            <small>Thu hoạch khi xong, hoặc bắt đầu món có đủ nguyên liệu — gửi sự kiện qua page bridge (giống CODE CU), không cần DOM.</small>
           </span>
           <span class="toggle">
             <input id="autoCookFirePit" type="checkbox" />
@@ -90,7 +85,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự nấu Kitchen (bridge)</strong>
-            <small>Cùng logic Fire Pit, danh sách công thức Kitchen như bản cũ.</small>
           </span>
           <span class="toggle">
             <input id="autoCookKitchen" type="checkbox" />
@@ -100,13 +94,13 @@
 
         <div class="input-grid" style="margin: -8px 0 12px">
           <label class="input-field">
-            <span>Ưu tiên món nấu (tùy chọn)</span>
+            <span>Ưu tiên món nấu</span>
             <input
               id="cookPreferredRecipe"
               type="text"
               maxlength="80"
               spellcheck="false"
-              placeholder="vd: Pancakes (cần Honey)"
+              placeholder="vd: Pancakes"
             />
           </label>
         </div>
@@ -114,7 +108,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
-            <small>Tìm trái chín (thanh tiến độ đầy), chặt gốc cây già (stump), trồng cây mới khi có sapling trong túi. Luồng riêng: chạy mỗi ~1 phút (không cần action gap với cây/đá).</small>
           </span>
           <span class="toggle">
             <input id="autoFruitTree" type="checkbox" />
@@ -125,7 +118,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Thu hoạch hoa, mật ong (DOM + Bridge)</strong>
-            <small>Click Beehive khi mật đầy (produced ≥ 100). Dùng Bridge để biết tổ ong nào sẵn sàng, fallback quét DOM. Chạy mỗi ~5 phút.</small>
           </span>
           <span class="toggle">
             <input id="autoHoney" type="checkbox" />
@@ -133,13 +125,9 @@
           </span>
         </label>
 
-
         <label class="setting-row">
           <span class="setting-copy">
-            <strong>Kẹt captcha Goblin / Moon → hard reload game (Shift + F5)</strong>
-            <small
-              >Khi đang mở minigame «Stop the Goblins» hoặc «Moon Seekers» (lưới 4×4), bot gọi hard reload (kiểu Shift + F5) để thoát.
-              Cách nhau ~35 giây để tránh lặp vô hạn. Có thể mất bước chưa lưu — chỉ bật khi làm tay cũng không xong.</small>
+            <strong>Kẹt captcha Goblin / Moon → hard reload</strong>
           </span>
           <span class="toggle">
             <input id="reloadPageOnGoblinMoonCaptcha" type="checkbox" checked />
@@ -148,20 +136,19 @@
         </label>
         <p class="setting-hint" style="margin: -4px 0 10px">
           Đã thoát bằng tải lại: <strong id="captchaReloadSkipCount">0</strong> lần
-          <button type="button" id="resetCaptchaReloadSkipCount" class="ghost-button" style="margin-left: 8px; padding: 4px 10px; font-size: 12px">
+          <button type="button" id="resetCaptchaReloadSkipCount" class="ghost-button" style="margin-left: 8px; padding: 4px 10px; width: auto; display: inline-block;">
             Xóa số đếm
           </button>
         </p>
         <p class="setting-hint" style="margin: -4px 0 10px">
-          Captcha: <span style="color:#4ade80">✓ Thành công: <strong id="captchaSolvedCount">0</strong></span>
+          Captcha: <span style="color:#16a34a">✓ Thành công: <strong id="captchaSolvedCount">0</strong></span>
           &nbsp;|&nbsp;
-          <span style="color:#f87171">✗ Thất bại: <strong id="captchaFailedCount">0</strong></span>
+          <span style="color:#dc2626">✗ Thất bại: <strong id="captchaFailedCount">0</strong></span>
         </p>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Ruộng: thu + mua hạt + gieo (DOM)</strong>
-            <small>Bridge còn ô trống: ưu tiên gieo. Mua tại Betty (bật tùy chọn bên dưới): mở Market «Buy 1» khi hết hạt trong túi. Tắt mua: chỉ dùng hạt trong kho — hết hạt thì chỉ thu; không còn gì để thu thì bỏ qua tick ruộng. Khi hết ô trống: thu (plant.png) trước. Tên hạt đúng game (vd. Sunflower Seed). Cần bridge.</small>
           </span>
           <span class="toggle">
             <input id="autoFarmCropsDom" type="checkbox" checked />
@@ -177,7 +164,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Ưu tiên hạt lớn nhanh (catalogue)</strong>
-            <small>Bật: thứ tự mua/gieo xếp theo thời gian lớn <em>cơ bản</em> trong game (ngắn trước, dài sau). Không loại hẳn hạt lâu — trên ruộng cây vẫn có thể chín sớm hơn nhờ buff, phân, v.v.</small>
           </span>
           <span class="toggle">
             <input id="cropDomSkipLongGrow" type="checkbox" checked />
@@ -187,7 +173,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Mua hạt tại Betty (Market)</strong>
-            <small>Bật mặc định: khi hết hạt trong túi, bot mở Betty và mua «Buy 1». Tắt: không mở shop mua hạt — chỉ gieo khi còn hạt trong kho.</small>
           </span>
           <span class="toggle">
             <input id="cropDomBuySeedsAtBetty" type="checkbox" checked />
@@ -198,7 +183,6 @@
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự thu nấm (wild / magic)</strong>
-            <small>Mỗi 2 giờ quét một lần: tap nấm trong tầm nhìn (theo loại bạn bật bên dưới). Luồng riêng: không chờ action gap với cây/đá, tới giờ là chạy ngay đầu tick. Không cần tool.</small>
           </span>
           <span class="toggle">
             <input id="autoHarvestMushrooms" type="checkbox" checked />
@@ -207,7 +191,7 @@
         </label>
 
         <p class="setting-hint mine-target-intro">
-          <strong>Loại nấm cần thu:</strong> chỉ bật loại bạn muốn — bot nhận diện theo sheet ảnh wild / magic trên ô nấm (giống DOM game).
+          <strong>Loại nấm cần thu:</strong>
         </p>
         <div class="mine-target-bunch">
           <label class="mine-chip">
@@ -221,7 +205,7 @@
         </div>
 
         <p class="setting-hint mine-target-intro">
-          <strong>Quặng cần đào:</strong> chỉ bật loại bạn muốn — bot ưu tiên <strong>đá → sắt → vàng → crimstone → sunstone</strong> (trong tầm nhìn). Tắt hết thì không đào loại đó.
+          <strong>Quặng cần đào:</strong>
         </p>
         <div class="mine-target-bunch">
           <label class="mine-chip">
@@ -245,7 +229,6 @@
             <span>Sunstone</span>
           </label>
         </div>
-
       </section>
     </main>
 

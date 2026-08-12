@@ -234,6 +234,44 @@
     "Lily Seed": 19,
   };
 
+  const SEASONAL_FRUIT_SEEDS = {
+    spring: [
+      "Apple Seed", "Apple Sapling",
+      "Orange Seed", "Orange Sapling",
+      "Blueberry Seed", "Blueberry Seeds",
+      "Plum Seed", "Plum Sapling",
+      "Olive Seed",
+    ],
+    summer: [
+      "Orange Seed", "Orange Sapling",
+      "Blueberry Seed", "Blueberry Seeds",
+      "Banana Seed", "Banana Sapling", "Banana Plant",
+      "Olive Seed",
+    ],
+    autumn: [
+      "Apple Seed", "Apple Sapling",
+      "Blueberry Seed", "Blueberry Seeds",
+      "Banana Seed", "Banana Sapling", "Banana Plant",
+      "Tomato Seed",
+      "Grape Seed", "Grape Sapling",
+    ],
+    winter: [
+      "Apple Seed", "Apple Sapling",
+      "Orange Seed", "Orange Sapling",
+      "Banana Seed", "Banana Sapling", "Banana Plant",
+      "Tomato Seed",
+      "Grape Seed", "Grape Sapling",
+      "Pear Seed", "Pear Sapling",
+    ],
+  };
+
+  const SEASONAL_FLOWER_SEEDS = {
+    spring: ["Sunpetal Seed"],
+    summer: ["Bloom Seed"],
+    autumn: ["Lily Seed"],
+    winter: ["Sunpetal Seed"],
+  };
+
   function getBumpkinLevel(xp) {
     if (!xp || xp < 0) return 1;
     const reqs = [0, 50, 150, 350, 750, 1500, 2500];
@@ -251,6 +289,8 @@
   }
 
   S.SEED_LEVEL_REQUIREMENTS = SEED_LEVEL_REQUIREMENTS;
+  S.SEASONAL_FRUIT_SEEDS = SEASONAL_FRUIT_SEEDS;
+  S.SEASONAL_FLOWER_SEEDS = SEASONAL_FLOWER_SEEDS;
   S.getBumpkinLevel = getBumpkinLevel;
 
   /** Hạt nhà kính — không mua vào plot thường. */
@@ -4320,13 +4360,15 @@
       return allowedSet.has(s);
     });
 
-    // Gom hạt giống theo cấu hình bật/tắt (autoFruitTree và autoHoney) của người dùng
+    // Gom hạt giống theo cấu hình bật/tắt (autoFruitTree và autoHoney) của người dùng, có lọc theo mùa
     const extraSeeds = [];
     if (runtime.settings.autoFruitTree) {
-      extraSeeds.push(...FRUIT_SAPLINGS_DOM);
+      const allowedFruits = SEASONAL_FRUIT_SEEDS[seasonKey] || [];
+      extraSeeds.push(...FRUIT_SAPLINGS_DOM.filter(s => allowedFruits.includes(s)));
     }
     if (runtime.settings.autoHoney) {
-      extraSeeds.push(...FLOWER_SEEDS_DOM);
+      const allowedFlowers = SEASONAL_FLOWER_SEEDS[seasonKey] || [];
+      extraSeeds.push(...FLOWER_SEEDS_DOM.filter(s => allowedFlowers.includes(s)));
     }
 
     const seedsToBuy = [...cropSeeds, ...extraSeeds];
@@ -4336,8 +4378,8 @@
 
     // Lọc và in ra màn hình danh sách hạt giống thực tế có thể mua trong mùa hiện tại (tồn tại trong stock và đã mở khóa)
     const activeCrops = cropSeeds.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
-    const activeFruits = FRUIT_SAPLINGS_DOM.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
-    const activeFlowers = FLOWER_SEEDS_DOM.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
+    const activeFruits = extraSeeds.filter(s => FRUIT_SAPLINGS_DOM.includes(s) && stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
+    const activeFlowers = extraSeeds.filter(s => FLOWER_SEEDS_DOM.includes(s) && stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
 
     logFlow(`=== DANH SÁCH HẠT MUA THEO MÙA (${seasonKey.toUpperCase()}) ===`, {});
     logFlow(`-> Hạt ruộng đúng mùa: ` + (activeCrops.length > 0 ? activeCrops.join(", ") : "Không có"), {});

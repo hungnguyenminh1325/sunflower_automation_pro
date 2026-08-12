@@ -103,6 +103,7 @@
     // Lấy tồn kho (stock) hiện tại từ game để biết hạt nào đang trong mùa và cấp độ tài khoản
     let stock = null;
     let bumpkinLevel = 1; // Mặc định là 1 (an toàn nhất) nếu bridge chưa sẵn sàng
+    let seasonKey = "spring";
     if (S.gameBridge?.isReady) {
       const st = S.gameBridge.getLatestState();
       if (st) {
@@ -110,6 +111,13 @@
         const xp = st.bumpkinExperience || 0;
         if (typeof S.getBumpkinLevel === "function") {
           bumpkinLevel = S.getBumpkinLevel(xp);
+        }
+        if (st.season) {
+          const s = String(st.season).toLowerCase();
+          if (s.includes("spring")) seasonKey = "spring";
+          else if (s.includes("summer")) seasonKey = "summer";
+          else if (s.includes("autumn") || s.includes("fall")) seasonKey = "autumn";
+          else if (s.includes("winter")) seasonKey = "winter";
         }
       }
     }
@@ -120,6 +128,13 @@
         // Chỉ gieo trồng nếu hạt giống này có bán trong shop hiện tại (tức là đúng mùa)
         if (stock && stock[name] === undefined) {
           continue;
+        }
+        // Kiểm tra đúng mùa từ cấu hình SEASONAL_FRUIT_SEEDS
+        if (S.SEASONAL_FRUIT_SEEDS) {
+          const allowed = S.SEASONAL_FRUIT_SEEDS[seasonKey] || [];
+          if (!allowed.includes(name)) {
+            continue; // Bỏ qua nếu trái mùa
+          }
         }
         // Kiểm tra yêu cầu cấp độ của hạt
         if (S.SEED_LEVEL_REQUIREMENTS) {

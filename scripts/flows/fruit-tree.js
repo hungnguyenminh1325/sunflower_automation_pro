@@ -43,6 +43,186 @@
     return String(img?.currentSrc || img?.getAttribute?.("src") || srcset || "").toLowerCase();
   }
 
+  /**
+   * Tên hạt cây ăn quả → slug CDN.
+   * Ví dụ: "Apple Seed" → "apple", "Blueberry Seeds" → "blueberry", "Banana Plant" → "banana"
+   */
+  function fruitSeedNameToSlug(name) {
+    return String(name || "")
+      .replace(/\s+(seed|seeds|sapling|plant)$/i, "")
+      .trim()
+      .replace(/\s+/g, "")
+      .toLowerCase();
+  }
+
+  /**
+   * Kiểm tra URL ảnh có khớp với fruit seed slug không.
+   * SFL CDN: /game-assets/fruit/apple/seed.webp hoặc /fruit/apple/seed.png
+   */
+  function imgUrlMatchesFruitSeedSlug(u, slug) {
+    const s = String(u || "").toLowerCase();
+    const sl = String(slug || "").toLowerCase();
+    if (!sl || s.startsWith("data:")) return false;
+    if (!s.includes("/fruit/")) return false;
+    if (!s.includes(`/${sl}/`) && !s.includes(`/${sl}.`)) return false;
+    return /\/seed\.(png|webp)(?:\?|$)/i.test(s) || /\/sapling\.(png|webp)(?:\?|$)/i.test(s);
+  }
+
+  /**
+   * Tìm ảnh hạt cây ăn quả trong inventory strip.
+   * Fruit seeds có URL /fruit/<name>/seed.webp — khác với crop seeds (/crops/<name>/seed.webp).
+   * Hàm ensureSeedSelectedDom của crop-dom KHÔNG tìm được loại này.
+   */
+  function findFruitSeedImgInInventory(slug) {
+    const docs = d.collectDocumentsForGameDom();
+    for (let di = 0; di < docs.length; di += 1) {
+      let imgs;
+      try {
+        imgs = docs[di].querySelectorAll("img[src], img[srcset]");
+      } catch (_e) {
+        continue;
+      }
+      for (let ii = 0; ii < imgs.length; ii += 1) {
+        const img = imgs[ii];
+        const u = imgAssetUrl(img);
+        if (!imgUrlMatchesFruitSeedSlug(u, slug)) continue;
+        if (!d.isVisible(img)) continue;
+        return img;
+      }
+    }
+    // Fallback: tìm theo alt text hoặc text content gần ảnh (SFL đôi khi dùng crop art)
+    for (let di = 0; di < docs.length; di += 1) {
+      let imgs;
+      try {
+        imgs = docs[di].querySelectorAll('img[src*="/fruit/"], img[srcset*="/fruit/"]');
+      } catch (_e) {
+        continue;
+      }
+      for (let ii = 0; ii < imgs.length; ii += 1) {
+        const img = imgs[ii];
+        if (!d.isVisible(img)) continue;
+        const u = imgAssetUrl(img);
+        if (!u.includes(`/${slug}/`) && !u.includes(`/${slug}.`)) continue;
+        return img;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Chọn hạt cây ăn quả từ inventory strip (tương tự ensureSeedSelectedDom nhưng cho /fruit/ URL).
+   * Trả về true nếu chọn được, false nếu không tìm thấy hạt trong inventory UI.
+   */
+  async function ensureFruitSeedSelectedDom(seedName) {
+    const slug = fruitSeedNameToSlug(seedName);
+
+    // Kiểm tra inventory có đang mở chưa, nếu chưa thì mở
+    const isStripVisible = () => {
+      const cDom = S.cropDom;
+      if (typeof cDom?.isInventorySeedStripVisible === "function") {
+        return cDom.isInventorySeedStripVisible();
+      }
+      // Fallback: tìm img fruit trong strip
+      const docs = d.collectDocumentsForGameDom();
+      for (let di = 0; di < docs.length; di += 1) {
+        try {
+          const rows = docs[di].querySelectorAll("div.flex.flex-wrap");
+          for (let ri = 0; ri < rows.length; ri += 1) {
+            const row = rows[ri];
+            if (!d.isVisible(row)) continue;
+            if (row.querySelector('img[src*="/fruit/"], img[src*="/crops/"]')) return true;
+          }
+        } catch (_e) { }
+      }
+      return false;
+    };
+
+    // Mở inventory nếu chưa mở
+    if (!isStripVisible()) {
+      // Dùng findBasketButtonClickTarget từ cropDom nếu có
+      let basketEl = null;
+      if (typeof S.cropDom?.findBasketButtonClickTarget === "function") {
+        basketEl = S.cropDom.findBasketButtonClickTarget();
+      }
+      if (!basketEl) {
+        // Fallback: tìm nút giỏ theo ảnh
+        const docs = d.collectDocumentsForGameDom();
+        for (let di = 0; di < docs.length && !basketEl; di += 1) {
+          try {
+            const imgs = docs[di].querySelectorAll('img[src*="basket"], img[src*="backpack"], img[src*="bag"]');
+            for (let ii = 0; ii < imgs.length; ii += 1) {
+              const img = imgs[ii];
+              if (!d.isVisible(img)) continue;
+              let el = img.parentElement;
+              for (let depth = 0; depth < 10 && el; depth += 1) {
+                if (el.classList?.contains("cursor-pointer")) { basketEl = el; break; }
+                el = el.parentElement;
+              }
+              if (basketEl) break;
+            }
+          } catch (_e) { }
+        }
+      }
+      if (basketEl) {
+        d.nativeClickClose(basketEl) || d.click(basketEl);
+        for (let wait = 0; wait < 15; wait += 1) {
+          await sleep(200);
+          if (isStripVisible()) break;
+        }
+        await sleep(rand(200, 400));
+      } else {
+        logFlow("Cây ăn quả: không tìm thấy nút giỏ đồ để mở inventory", { seedName });
+        return false;
+      }
+    }
+
+    // Tìm ảnh hạt fruit trong inventory
+    let targetImg = findFruitSeedImgInInventory(slug);
+    if (!targetImg) {
+      await sleep(rand(300, 500));
+      targetImg = findFruitSeedImgInInventory(slug);
+    }
+
+    if (!targetImg) {
+      logFlow("Cây ăn quả: không tìm thấy hạt trong giỏ đồ", { seedName, slug });
+      // Đóng inventory
+      if (typeof S.cropDom?.closeInventorySeedStripIfOpen === "function") {
+        await S.cropDom.closeInventorySeedStripIfOpen();
+      }
+      return false;
+    }
+
+    // Click vào ô hạt
+    let clickEl = targetImg;
+    let el = targetImg.parentElement;
+    for (let depth = 0; depth < 16 && el; depth += 1) {
+      if (el.classList?.contains("cursor-pointer") && !el.classList?.contains("cursor-not-allowed")) {
+        clickEl = el;
+        break;
+      }
+      el = el.parentElement;
+    }
+    d.clickAtCenter(clickEl);
+    await sleep(rand(300, 500));
+
+    logFlow("Cây ăn quả: đã chọn hạt giống từ inventory", { seedName, slug });
+
+    // Đóng inventory
+    if (typeof S.cropDom?.closeInventorySeedStripIfOpen === "function") {
+      await S.cropDom.closeInventorySeedStripIfOpen();
+    } else {
+      // ESC fallback
+      const docs = d.collectDocumentsForGameDom();
+      for (let di = 0; di < docs.length; di += 1) {
+        try {
+          docs[di].documentElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+        } catch (_e) { }
+      }
+      await sleep(rand(200, 350));
+    }
+    return true;
+  }
+
   function isFruitPatchEmpty(root) {
     if (!root) return false;
     const imgs = Array.from(root.querySelectorAll('img'));
@@ -356,13 +536,12 @@
 
     if (emptyRoots.length === 0) return false;
 
-    // 2. Chọn hạt giống cây ăn quả đúng 1 lần duy nhất
-    if (typeof S.cropDom?.ensureSeedSelectedDom === "function") {
-      const selected = await S.cropDom.ensureSeedSelectedDom(sapling);
-      if (!selected) {
-        // Nếu không chọn được hạt giống (do lag, hoặc thực tế hết hạt), thoát ngay để tránh mở/đóng kho đồ liên tục
-        return false;
-      }
+    // 2. Chọn hạt giống cây ăn quả — dùng hàm riêng tìm theo /fruit/ URL
+    // (ensureSeedSelectedDom của crop-dom chỉ tìm /crops/ nên KHÔNG áp dụng được cho fruit seeds)
+    const selected = await ensureFruitSeedSelectedDom(sapling);
+    if (!selected) {
+      // Không tìm được hạt trong inventory UI → báo fail để caller thêm cooldown
+      return "no_seed_ui";
     }
 
     // 3. Trồng vào ô trống đầu tiên
@@ -390,7 +569,25 @@
     // 2. Chặt gốc
     else if (await tryClearStump()) acted = true;
     // 3. Trồng mới
-    else if (await tryPlantSapling(state.inventory)) acted = true;
+    else {
+      const plantResult = await tryPlantSapling(state.inventory);
+      if (plantResult === true) {
+        acted = true;
+        runtime._fruitPlantFailCount = 0;
+      } else if (plantResult === "no_seed_ui") {
+        // Không tìm được hạt trong inventory UI → thêm cooldown để tránh spam
+        const failCount = (runtime._fruitPlantFailCount || 0) + 1;
+        runtime._fruitPlantFailCount = failCount;
+        const cooldownMs = Math.min(failCount * 20_000, 120_000); // 20s, 40s, 60s... tối đa 2 phút
+        logFlow(`Cây ăn quả: không chọn được hạt (lần ${failCount}) — chờ ${Math.round(cooldownMs / 1000)}s`, {});
+        runtime.nextFruitTreeFlowAt = t + cooldownMs;
+        runtime.fruitTreeFlowState = `Chờ hạt giống (fail ${failCount})`;
+        return false;
+      } else {
+        // false = không có ô trống hoặc không có hạt
+        runtime._fruitPlantFailCount = 0;
+      }
+    }
 
     // Cập nhật lịch trình
     const schedule = computeFruitRestSchedule(state, nowMs());

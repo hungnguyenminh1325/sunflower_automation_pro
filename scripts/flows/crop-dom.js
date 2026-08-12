@@ -1838,8 +1838,9 @@
   /** Giỏ inventory: một cú bấm — double-click dễ toggle 2 lần về ô mặc định. */
   async function clickCropInventoryBrownOnce(el) {
     if (!el || !d.isVisible(el)) return;
-    d.clickAtCenter(el);
-    await sleep(rand(120, 240));
+    // Dùng cả native click (el.click()) + synthetic (clickAtCenter) để tương thích React event delegation
+    d.nativeClickClose(el) || d.clickAtCenter(el);
+    await sleep(rand(180, 320));
   }
 
   /**
@@ -1884,15 +1885,30 @@
 
   function clickSeedImageRoot(targetSeedImg) {
     if (!targetSeedImg) return;
-    let el = targetSeedImg;
+    // Bắt đầu từ parentElement (bỏ qua img) vì React onClick gắn trên div wrapper,
+    // không phải trên thẻ img. Click img trực tiếp chỉ gây hover, không select hạt.
+    let el = targetSeedImg.parentElement;
+    let clickTarget = null;
     for (let depth = 0; depth < 16 && el; depth += 1) {
-      if (d.isVisible(el) && d.isClickablePointerEventsOk(el)) {
-        d.clickAtCenter(el);
-        return;
+      if (
+        el.classList?.contains("cursor-pointer") &&
+        d.isVisible(el) &&
+        d.isClickablePointerEventsOk(el) &&
+        !el.classList?.contains("cursor-not-allowed")
+      ) {
+        const r = el.getBoundingClientRect();
+        // Chọn element nhỏ nhất có thể click (ô hạt), bỏ qua container lớn
+        if (r.width > 0 && r.width <= 140 && r.height > 0 && r.height <= 140) {
+          clickTarget = el;
+          break;
+        }
       }
       el = el.parentElement;
     }
-    d.clickAtCenter(targetSeedImg);
+    // Fallback: nếu không tìm thấy wrapper phù hợp, click thẺ ng img
+    if (!clickTarget) clickTarget = targetSeedImg;
+    // Dùng nativeClickClose (el.click() + clickAtCenter) để React nhận event
+    d.nativeClickClose(clickTarget) || d.clickAtCenter(clickTarget);
   }
 
   async function closeInventorySeedStripIfOpen() {
@@ -2029,6 +2045,7 @@
 
     if (seedCountFromBridge(seedName) <= 0) {
       runtime.cropDomLastSelectedSeedName = null;
+      runtime.cropDomLastSelectedSeedAt = 0;
       logThrottled(
         "crop_dom_no_seed_inventory",
         10000,
@@ -2042,7 +2059,11 @@
     // Inventory đóng + cache khớp → tin cache, không mở lại (tránh nhảy nhảy inventory mọi lần gieo).
     // Inventory mở → verify selectbox nhanh rồi đóng.
     // Cache bị xóa khi: thu hoạch (tryHarvestOne), dialog "Wrong seed", đổi mùa, đổi loại hạt.
+    // Cache timeout 45s: sau 45s buộc verify lại để tránh trường hợp game reset active item mà
+    // bot vẫn nghĩ đang cầm hạt → click ô đất → game mở holder popup thay vì gieo.
+    const SEED_CACHE_TTL_MS = 45_000;
     if (runtime.cropDomLastSelectedSeedName === seedName) {
+      const cacheAge = now() - (runtime.cropDomLastSelectedSeedAt || 0);
       if (isInventorySeedStripVisible()) {
         // Inventory đang mở (user mở thủ công, hoặc chưa đóng kịp) → verify nhanh rồi đóng
         await sleep(rand(80, 140));
@@ -2050,14 +2071,21 @@
           // Selectbox không thấy → xóa cache, chọn lại
           logFlow("Ruộng DOM: cache hạt — inventory mở nhưng không thấy selectbox — chọn lại", { seedName });
           runtime.cropDomLastSelectedSeedName = null;
+          runtime.cropDomLastSelectedSeedAt = 0;
           // Thực hiện chọn lại bên dưới
         } else {
+          runtime.cropDomLastSelectedSeedAt = now(); // gia hạn TTL khi vừa verify OK
           await closeInventorySeedStripIfOpen();
           return true;
         }
-      } else {
-        // Inventory đóng → tin cache (hạt đang cầm), không mở lại
+      } else if (cacheAge < SEED_CACHE_TTL_MS) {
+        // Inventory đóng + cache còn mới → tin cache (hạt đang cầm), không mở lại
         return true;
+      } else {
+        // Cache quá cũ (> 45s) → có thể game đã reset active item — xóa cache, verify lại
+        logFlow("Ruộng DOM: cache hạt quá hạn (" + Math.round(cacheAge / 1000) + "s) — verify lại", { seedName });
+        runtime.cropDomLastSelectedSeedName = null;
+        runtime.cropDomLastSelectedSeedAt = 0;
       }
     }
 
@@ -2083,6 +2111,7 @@
     if (inventorySeedSlugAppearsSelected(slug)) {
       logFlow("Ruộng DOM: hạt đã được chọn (verify qua selectbox)", { seedName });
       runtime.cropDomLastSelectedSeedName = seedName;
+      runtime.cropDomLastSelectedSeedAt = now();
       await closeInventorySeedStripIfOpen();
       return true;
     }
@@ -2125,34 +2154,49 @@
       return false;
     }
 
-    // Click vào ô hạt
+    // Click vào ô hạt — thử brown slot trước (chính xác hơn), fallback sang clickSeedImageRoot
     const brown = findCropInventoryBrownSlot(targetSeedImg);
     if (brown && d.isVisible(brown)) {
       await clickCropInventoryBrownOnce(brown);
     } else {
       clickSeedImageRoot(targetSeedImg);
-      await sleep(rand(280, 420));
+      await sleep(rand(280, 480));
     }
 
-    // Sau khi click hạt: tin vào thao tác click (không fail nếu selectbox không thấy ngay)
-    // SFL mới đôi khi selectbox chỉ hiện thoáng qua rồi đóng inventory tự động
-    await sleep(rand(350, 550));
-    const nowSelected = inventorySeedSlugAppearsSelected(slug);
-    if (nowSelected) {
-      logFlow("Ruộng DOM: đã chọn hạt (xác nhận qua selectbox)", { seedName });
-    } else {
-      // Thử click lần 2 rồi vẫn tin vào thao tác
-      clickSeedImageRoot(targetSeedImg);
-      await sleep(rand(350, 550));
-      if (inventorySeedSlugAppearsSelected(slug)) {
-        logFlow("Ruộng DOM: đã chọn hạt sau click lần 2", { seedName });
-      } else {
-        logFlow("Ruộng DOM: đã click hạt (không thấy selectbox — tin vào click)", { seedName });
+    // ── Verify selectbox sau click ──
+    // SFL React cần thời gian xử lý sự kiện trước khi render selectbox.
+    // Thử tối đa 3 lần với delay tăng dần.
+    let selected = false;
+    for (let attempt = 0; attempt < 3 && !selected; attempt += 1) {
+      await sleep(rand(400, 600) + attempt * 150);
+      selected = inventorySeedSlugAppearsSelected(slug);
+      if (selected) {
+        logFlow(`Ruộng DOM: đã chọn hạt (lần ${attempt + 1})`, { seedName });
+        break;
+      }
+      if (attempt < 2) {
+        // Click lại trước lần thử tiếp theo
+        logFlow(`Ruộng DOM: chưa thấy selectbox sau click ${attempt + 1} — click lại`, { seedName });
+        if (brown && d.isVisible(brown)) {
+          await clickCropInventoryBrownOnce(brown);
+        } else {
+          clickSeedImageRoot(targetSeedImg);
+          await sleep(rand(200, 350));
+        }
       }
     }
 
-    // Đặt cache sau khi đã click hạt (dù selectbox có hiện hay không)
+    if (!selected) {
+      // Sau 3 lần vẫn không thấy selectbox → KHÔNG set cache, trả false
+      // Để tránh bot nghĩ đã cầm hạt trong khi thực tế chưa chọn được
+      logFlow("Ruộng DOM: ✕ không thấy selectbox sau 3 lần click — trả false", { seedName });
+      await closeInventorySeedStripIfOpen();
+      return false;
+    }
+
+    // Đặt cache sau khi đã xác nhận chọn hạt thành công
     runtime.cropDomLastSelectedSeedName = seedName;
+    runtime.cropDomLastSelectedSeedAt = now();
 
     // Đóng kho đồ để chuẩn bị gieo
     await closeInventorySeedStripIfOpen();
@@ -4093,12 +4137,14 @@
     // Giải pháp: nếu emptyLeft không đổi sau >= 5 lần gieo liên tiếp → xóa cache, force re-select.
     if (emptyLeft > 0 && emptyLeft === runtime._cropDomLastEmptyLeft && runtime.lastAction === "crop_plant_dom") {
       runtime._cropDomStuckPlantCount = (runtime._cropDomStuckPlantCount || 0) + 1;
-      if (runtime._cropDomStuckPlantCount >= 5) {
+      // Giảm ngưỡng 5→2: reset cache sớm hơn khi game mở holder popup thay vì gieo
+      if (runtime._cropDomStuckPlantCount >= 2) {
         logFlow(
           "Ruộng DOM: ⚠ stuck — gieo " + runtime._cropDomStuckPlantCount + " lần mà ô trống không giảm — xóa cache hạt, force re-select",
           { emptyLeft, cachedSeedName, stuckCount: runtime._cropDomStuckPlantCount },
         );
         runtime.cropDomLastSelectedSeedName = null;
+        runtime.cropDomLastSelectedSeedAt = 0;
         runtime._cropDomStuckPlantCount = 0;
       }
     } else {

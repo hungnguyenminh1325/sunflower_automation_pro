@@ -158,6 +158,22 @@
                 nextInMs: Math.max(0, on ? (runtime.nextHoneyFlowAt || Number.MAX_SAFE_INTEGER) - currentTime : Number.MAX_SAFE_INTEGER),
               };
             })(),
+            compost: (() => {
+              const on = !!runtime.settings.autoCompost;
+              return {
+                name: "Luồng: ủ phân Composter (DOM)",
+                enabled: on,
+                startedAt: runtime.compostFlowStartedAt || 0,
+                nextAt: on ? (runtime.nextCompostFlowAt || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER,
+                intervalMs: S.COMPOST_FLOW_INTERVAL_MS || 60000,
+                state: runtime.compostFlowState || "—",
+                noToolQueue: true,
+                queueCaption: "Tự động thu phân chín & ủ phân mới",
+                queueSize: 0,
+                queueLabel: "",
+                nextInMs: Math.max(0, on ? (runtime.nextCompostFlowAt || Number.MAX_SAFE_INTEGER) - currentTime : Number.MAX_SAFE_INTEGER),
+              };
+            })(),
           },
         },
       });
@@ -303,6 +319,11 @@
             mineTargetSunstone: S.DEFAULT_SETTINGS.mineTargetSunstone,
           });
         }
+        if (schema < 17) {
+          Object.assign(patch, {
+            autoCompost: S.DEFAULT_SETTINGS.autoCompost,
+          });
+        }
         settings = S.normalizeSettings(Object.assign({}, settings, patch));
         try {
           chrome.storage.local.set({
@@ -336,6 +357,22 @@
       } else {
         runtime.treeFlowState = "Tạm tắt";
         runtime.nextTreeFlowAt = t;
+      }
+      if (runtime.settings.autoHoney) {
+        runtime.honeyFlowStartedAt = 0;
+        runtime.nextHoneyFlowAt = t;
+        runtime.honeyFlowState = "Sẵn sàng";
+      } else {
+        runtime.honeyFlowState = "Tạm tắt";
+        runtime.nextHoneyFlowAt = t;
+      }
+      if (runtime.settings.autoCompost) {
+        runtime.compostFlowStartedAt = 0;
+        runtime.nextCompostFlowAt = t;
+        runtime.compostFlowState = "Sẵn sàng";
+      } else {
+        runtime.compostFlowState = "Tạm tắt";
+        runtime.nextCompostFlowAt = t;
       }
       if (runtime.settings.autoMine) {
         runtime.rockFlowStartedAt = 0;

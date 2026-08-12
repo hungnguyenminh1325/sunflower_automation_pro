@@ -128,6 +128,111 @@
     return false;
   }
 
+  /**
+   * Luồng tự động xử lý lỗi + Tải lại trang (Auto Error & Refresh Handler):
+   * Chạy độc lập trên interval riêng (mỗi 1.5s), giống như captcha.
+   * Tự động phát hiện popup lỗi / update / try again / refresh / reload / retry...
+   * và click bấm nút khôi phục hoặc tự động reload trang nếu bị treo lỗi.
+   */
+  async function tryAutoHandleErrorAndRefresh() {
+    if (!S.dom?.collectDocumentsForGameDom) return false;
+
+    const docs = S.dom.collectDocumentsForGameDom();
+
+    for (let di = 0; di < docs.length; di += 1) {
+      const doc = docs[di];
+      if (!doc || !doc.body) continue;
+
+      const bodyText = (doc.body.textContent || "").toLowerCase();
+
+      // Danh sách từ khóa thông báo lỗi game
+      const isErrorScreen =
+        bodyText.includes("something went wrong") ||
+        bodyText.includes("connection lost") ||
+        bodyText.includes("a new version is ready") ||
+        bodyText.includes("an error occurred") ||
+        bodyText.includes("network error") ||
+        bodyText.includes("session expired") ||
+        bodyText.includes("too many requests") ||
+        bodyText.includes("error code");
+
+      // 1. Kiểm tra popup Update game phiên bản mới trước
+      if (bodyText.includes("a new version is ready")) {
+        const handledUpdate = await tryHandleGameUpdateDialog();
+        if (handledUpdate) {
+          runtime.busy = false;
+          return true;
+        }
+      }
+
+      // 2. Tìm tất cả các container dialog / modal đang mở
+      let containers = [];
+      try {
+        const dialogs = doc.querySelectorAll('[role="dialog"], [data-headlessui-state="open"], .modal, .dialog');
+        containers = Array.from(dialogs).filter(dEl => S.dom?.isVisible ? S.dom.isVisible(dEl) : true);
+      } catch (_e) { }
+
+      if (containers.length === 0 && isErrorScreen) {
+        containers = [doc.body];
+      }
+
+      for (const container of containers) {
+        let clickableCandidates = [];
+        try {
+          clickableCandidates = Array.from(
+            container.querySelectorAll("button, [role='button'], a, span, div.cursor-pointer")
+          );
+        } catch (_e) { }
+
+        for (const el of clickableCandidates) {
+          if (S.dom?.isVisible && !S.dom.isVisible(el)) continue;
+          const text = String(el.textContent || "").trim().toLowerCase();
+          if (!text || text.length > 50) continue;
+
+          // Từ khóa nút Refresh / Try again / Retry / Reload / Update / Continue / Okay
+          const isErrorActionBtn =
+            /^(try again|refresh|reload|retry|update|thử lại|tải lại|tiếp tục|continue|okay|close|đóng)$/i.test(text) ||
+            /\btry\s+again\b|\brefresh\b|\breload\b|\bretry\b|\bupdate\b|\bthử\s+lại\b|\btải\s+lại\b/i.test(text);
+
+          if (isErrorActionBtn) {
+            S.time.logFlow(`Auto Error Handler: Phát hiện nút khôi phục/refresh ("${text}"), tiến hành click`, {});
+            if (S.dom?.nativeClickClose) {
+              S.dom.nativeClickClose(el);
+            } else if (S.dom?.clickAtCenter) {
+              S.dom.clickAtCenter(el);
+            } else {
+              el.click?.();
+            }
+            runtime.busy = false; // Clear busy flag để giải kẹt bot
+            await S.time.sleep(1200);
+            return true;
+          }
+        }
+      }
+
+      // 3. Nếu phát hiện màn hình lỗi mà không bấm được nút nào -> reload trang sau 3 lần rà soát
+      if (isErrorScreen) {
+        runtime._errorPopupSeenCount = (runtime._errorPopupSeenCount || 0) + 1;
+        if (runtime._errorPopupSeenCount >= 3) {
+          S.time.logFlow("Auto Error Handler: Phát hiện màn hình lỗi game treo liên tục — tự động reload trang (location.reload)", {});
+          runtime._errorPopupSeenCount = 0;
+          runtime.busy = false;
+          window.location.reload();
+          await S.time.sleep(2000);
+          return true;
+        }
+      } else {
+        runtime._errorPopupSeenCount = 0;
+      }
+    }
+    return false;
+  }
+
+  // Chạy luồng tự động click Refresh / Try again độc lập mỗi 1.5s (giống captcha)
+  setInterval(() => {
+    tryAutoHandleErrorAndRefresh().catch(() => {});
+  }, 1500);
+
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
 
@@ -149,6 +254,7 @@
         runtime.petalHarvestState = "Tạm dừng (rời farm)";
         runtime.fruitTreeFlowState = "Tạm dừng (rời farm)";
         runtime.honeyFlowState = "Tạm dừng (rời farm)";
+        runtime.compostFlowState = "Tạm dừng (rời farm)";
         S.time.logFlow("Route watcher: rời farm route — dừng tất cả luồng", {
           href: String(window.location.href || "").slice(0, 80),
         });
@@ -170,6 +276,8 @@
       runtime.fruitTreeFlowResumeAt = 0;
       runtime.lastFruitTreeActionAt = 0;
       runtime.honeyFlowResumeAt = 0;
+      runtime.compostFlowResumeAt = 0;
+      runtime.lastCompostActionAt = 0;
       S.time.logFlow("Route watcher: trở về farm route — bắt đầu lại vòng lặp", {
         href: String(window.location.href || "").slice(0, 80),
       });
@@ -320,48 +428,8 @@
         }
       }
 
-      // Xử lý popup lỗi chung (ví dụ: "Oops! Something went wrong!" -> "Try again")
-      if (typeof S.dom?.findVisibleDialogButtonByText === "function") {
-        const tryAgainBtn = S.dom.findVisibleDialogButtonByText(/try again|refresh/i) || (typeof S.dom.findInteractiveButtonByText === "function" ? S.dom.findInteractiveButtonByText(/try again|refresh/i) : null);
-        if (tryAgainBtn) {
-          S.time.logFlow("Phát hiện popup lỗi, đang click Try again / Refresh", {});
-          S.dom.nativeClickClose(tryAgainBtn);
-          await S.time.sleep(S.time.rand(500, 1000));
-          return; // Dừng tick này để xử lý
-        }
-      }
-
-      // Xử lý popup update game: "A new version is ready. Update"
-      if (await tryHandleGameUpdateDialog()) return;
-
-      const docsToSearch = S.dom?.collectDocumentsForGameDom ? S.dom.collectDocumentsForGameDom() : [document];
-      for (let di = 0; di < docsToSearch.length; di += 1) {
-        const doc = docsToSearch[di];
-        const bodyText = doc.body ? doc.body.textContent || "" : "";
-        if (bodyText.toLowerCase().includes("a new version is ready")) {
-          const els = doc.querySelectorAll("a, button, span, u, p, div");
-          let clicked = false;
-          for (let i = 0; i < els.length; i++) {
-            const el = els[i];
-            if (el.textContent && el.textContent.trim().toLowerCase() === "update" && (S.dom?.isVisible ? S.dom.isVisible(el) : true)) {
-              S.time.logFlow("Phát hiện popup Update phiên bản mới, đang click Update", {});
-              if (S.dom?.nativeClickClose) {
-                S.dom.nativeClickClose(el);
-              } else {
-                el.click();
-              }
-              clicked = true;
-              break;
-            }
-          }
-          if (!clicked) {
-            S.time.logFlow("Phát hiện yêu cầu Update phiên bản mới, tiến hành reload trang", {});
-            window.location.reload();
-          }
-          await S.time.sleep(2000);
-          return; // Dừng tick này để xử lý
-        }
-      }
+      // Tự động xử lý popup lỗi chung & update game (Try again / Refresh / Reload / Update)
+      if (await tryAutoHandleErrorAndRefresh()) return;
 
       if (runtime.settings.autoBuyTools && runtime.buyToolQueue.length > 0) {
         await drainBuyToolQueue();
@@ -692,6 +760,29 @@
           } else {
             runtime.honeyFlowState = "Tạm tắt";
           }
+          if (!didWork) runtime.currentSequenceStep = "compost";
+        }
+        else if (runtime.currentSequenceStep === "compost") {
+          if (runtime.settings.autoCompost && typeof S.compost?.runCompostCycle === "function") {
+            if (runtime.compostFlowResumeAt && S.time.now() < runtime.compostFlowResumeAt) {
+              runtime.currentSequenceStep = "cook";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.compostFlowResumeAt = 0;
+            runtime.compostFlowState = "Đang chạy";
+            try {
+              const didC = await S.compost.runCompostCycle();
+              if (didC) {
+                didWork = true;
+                runtime.compostFlowStartedAt = runtime.compostFlowStartedAt || S.time.now();
+              }
+            } catch (_cErr) {
+              runtime.compostFlowState = "Lỗi";
+            }
+          } else {
+            runtime.compostFlowState = "Tạm tắt";
+          }
           if (!didWork) runtime.currentSequenceStep = "cook";
         }
         else if (runtime.currentSequenceStep === "cook") {
@@ -757,6 +848,7 @@
       if (runtime.settings.autoPetalHarvestDom) runtime.petalHarvestState = "Lỗi";
       if (runtime.settings.autoFruitTree) runtime.fruitTreeFlowState = "Lỗi";
       if (runtime.settings.autoHoney) runtime.honeyFlowState = "Lỗi";
+      if (runtime.settings.autoCompost) runtime.compostFlowState = "Lỗi";
       S.time.logFlow("Lỗi luồng", {
         lastError: runtime.lastError,
         errorCount: runtime.errorCount,

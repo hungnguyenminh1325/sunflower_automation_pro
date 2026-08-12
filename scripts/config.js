@@ -4,7 +4,7 @@
   S.SETTINGS_SCHEMA_STORAGE_KEY = "sfl_ui_only_settings_schema";
   /** Số lần đã tải lại trang để thoát captcha Goblin/Moon (chrome.storage.local, không nằm trong settings JSON). */
   S.CAPTCHA_GOBLIN_MOON_RELOAD_SKIP_COUNT_KEY = "sfl_ui_captcha_goblin_moon_reload_skip_count";
-  S.SETTINGS_SCHEMA_VERSION = 16;
+  S.SETTINGS_SCHEMA_VERSION = 17;
   S.DEFAULT_SETTINGS = {
     masterEnabled: true,
     autoBuyTools: false,
@@ -46,6 +46,8 @@
     autoFruitTree: false,
     /** Thu mật ong (Beehive produced >= 100) — DOM + Bridge. */
     autoHoney: false,
+    /** Tự động ủ phân (Composter: Basic, Turbo, Premium) — DOM. */
+    autoCompost: false,
     /** Ưu tiên món này khi đủ nguyên liệu (đúng tên game, vd Pancakes); rỗng = chọn theo XP như cũ. */
     cookPreferredRecipe: "",
     /** Thấy modal Goblin / Moon Seekers → tải lại tab (thoát kẹt; cooldown ~35s). */
@@ -62,6 +64,8 @@
   S.FRUIT_TREE_FLOW_INTERVAL_MS = 60 * 1000;
   /** Chu kỳ giữa các lần quét tổ ong mật (5 phút). */
   S.HONEY_FLOW_INTERVAL_MS = 5 * 60 * 1000;
+  /** Chu kỳ quét kiểm tra luồng ủ phân (2 phút). */
+  S.COMPOST_FLOW_INTERVAL_MS = 2 * 60 * 1000;
   S.STRIKE_COUNT_MIN = 1;
   S.STRIKE_COUNT_MAX = 8;
   S.WOOD_CHOP_LOG = {

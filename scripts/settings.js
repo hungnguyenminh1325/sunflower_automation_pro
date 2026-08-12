@@ -73,6 +73,7 @@
     merged.autoPetalHarvestDom = asBool(merged.autoPetalHarvestDom, D.autoPetalHarvestDom);
     merged.autoFruitTree = asBool(merged.autoFruitTree, D.autoFruitTree);
     merged.autoHoney = asBool(merged.autoHoney, D.autoHoney);
+    merged.autoCompost = asBool(merged.autoCompost, D.autoCompost);
     merged.cookPreferredRecipe = "";
     merged.reloadPageOnGoblinMoonCaptcha = true;
     merged.actionGapMs = Math.max(800, Math.min(30000, Math.floor(Number(merged.actionGapMs) || D.actionGapMs)));
@@ -127,6 +128,7 @@
     const mushroomToggledOn = !prev.autoHarvestMushrooms && runtime.settings.autoHarvestMushrooms;
     const fruitTreeToggledOn = !prev.autoFruitTree && runtime.settings.autoFruitTree;
     const honeyToggledOn = !prev.autoHoney && runtime.settings.autoHoney;
+    const compostToggledOn = !prev.autoCompost && runtime.settings.autoCompost;
     const cookWasOff = !prev.autoCookFirePit && !prev.autoCookKitchen;
     const cookNowOn = runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen;
 
@@ -185,6 +187,17 @@
       runtime.honeyFlowStartedAt = 0;
       runtime.nextHoneyFlowAt = currentTime;
       runtime.honeyFlowState = "Sẵn sàng";
+    }
+
+    if (!runtime.settings.autoCompost) {
+      runtime.compostFlowStartedAt = 0;
+      runtime.nextCompostFlowAt = currentTime;
+      runtime.compostFlowState = "Tạm tắt";
+      runtime.compostFlowResumeAt = 0;
+    } else if (compostToggledOn) {
+      runtime.compostFlowStartedAt = 0;
+      runtime.nextCompostFlowAt = currentTime;
+      runtime.compostFlowState = "Sẵn sàng";
     }
 
     if (!cookNowOn) {

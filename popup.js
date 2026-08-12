@@ -6,6 +6,7 @@ const ids = {
   autoCookKitchen: document.getElementById("autoCookKitchen"),
   autoFruitTree: document.getElementById("autoFruitTree"),
   autoHoney: document.getElementById("autoHoney"),
+  autoCompost: document.getElementById("autoCompost"),
 
   mineTargetStone: document.getElementById("mineTargetStone"),
   mineTargetIron: document.getElementById("mineTargetIron"),
@@ -73,6 +74,7 @@ const CONTENT_SCRIPT_FILES = [
   "scripts/flows/petal-collect-dom.js",
   "scripts/flows/fruit-tree.js",
   "scripts/flows/honey.js",
+  "scripts/flows/compost.js",
   "scripts/flows/reset-purchase.js",
   "scripts/automation.js",
   "scripts/bootstrap.js",
@@ -132,6 +134,7 @@ function readUiSettings() {
     cookPreferredRecipe: "",
     autoFruitTree: !!ids.autoFruitTree?.checked,
     autoHoney: !!ids.autoHoney?.checked,
+    autoCompost: !!ids.autoCompost?.checked,
     reloadPageOnGoblinMoonCaptcha: true,
     autoFarmCropsDom: !!ids.autoSunflowerBasic?.checked,
     cropDomSeedName: "",
@@ -156,6 +159,7 @@ function renderSettings(settings) {
   if (ids.autoCookKitchen) ids.autoCookKitchen.checked = !!settings.autoCookKitchen;
   if (ids.autoFruitTree) ids.autoFruitTree.checked = !!settings.autoFruitTree;
   if (ids.autoHoney) ids.autoHoney.checked = !!settings.autoHoney;
+  if (ids.autoCompost) ids.autoCompost.checked = !!settings.autoCompost;
 
   if (ids.mineTargetStone) ids.mineTargetStone.checked = settings.mineTargetStone !== false;
   if (ids.mineTargetIron) ids.mineTargetIron.checked = settings.mineTargetIron !== false;
@@ -164,12 +168,22 @@ function renderSettings(settings) {
   if (ids.mineTargetSunstone) ids.mineTargetSunstone.checked = settings.mineTargetSunstone !== false;
 }
 
-/**
- * @param {{ syncForm?: boolean }} opts
- * syncForm: chỉ bật khi mở popup / sau lưu OK — không gọi mỗi giây (tránh ghi đè checkbox user → bật/tắt nhấp nháy).
- */
+async function loadSettingsFromStorage() {
+  try {
+    chrome.storage.local.get(["sfl_ui_only_settings"], (res) => {
+      const saved = res?.sfl_ui_only_settings;
+      if (saved && typeof saved === "object") {
+        renderSettings(saved);
+      }
+    });
+  } catch (_e) {}
+}
+
 async function refreshStatus(opts = {}) {
   const syncForm = !!opts.syncForm;
+  if (syncForm) {
+    await loadSettingsFromStorage();
+  }
   const tab = await getGameTab();
   if (!tab?.id) {
     setStatus("Hãy mở sunflower-land.com/play trước.", "warn");
@@ -198,24 +212,33 @@ async function refreshStatus(opts = {}) {
   setStatusDetails({
     flows: status?.flows || null,
   });
-
 }
 
 async function saveSettingsAuto() {
+  const newSettings = readUiSettings();
+  
+  // Lưu trực tiếp vào chrome.storage.local trước để bảo đảm không bị mất setting
+  try {
+    chrome.storage.local.get(["sfl_ui_only_settings"], (res) => {
+      const existing = res?.sfl_ui_only_settings || {};
+      const merged = Object.assign({}, existing, newSettings);
+      chrome.storage.local.set({ sfl_ui_only_settings: merged });
+    });
+  } catch (_e) {}
+
   const tab = await getGameTab();
   if (!tab?.id) {
-    setStatus("Hãy mở sunflower-land.com/play trước.", "warn");
-    setStatusDetails();
+    setStatus("Đã lưu cấu hình (chưa mở tab game).", "live");
     return;
   }
 
   const update = await send(tab.id, {
     type: "SFL_UI_UPDATE_SETTINGS",
-    settings: readUiSettings(),
+    settings: newSettings,
   });
 
   if (!update.ok || !update.data?.ok) {
-    setStatus("Lưu thất bại. Hãy tải lại tab game.", "warn");
+    setStatus("Đã lưu cấu hình (tự tải lại tab game để áp dụng).", "live");
     return;
   }
 
@@ -234,6 +257,7 @@ const autoSaveTargets = [
   ids.autoCookKitchen,
   ids.autoFruitTree,
   ids.autoHoney,
+  ids.autoCompost,
   ids.mineTargetStone,
   ids.mineTargetIron,
   ids.mineTargetGold,
@@ -248,11 +272,6 @@ for (const node of autoSaveTargets) {
   });
 }
 
-
-
-
-
-
-
+loadSettingsFromStorage();
 refreshStatus({ syncForm: true });
 setInterval(() => refreshStatus({ syncForm: false }), 1000);

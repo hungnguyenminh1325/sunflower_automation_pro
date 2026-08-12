@@ -79,6 +79,12 @@
     honeyFlowStartedAt: 0,
     honeyFlowState: "Tạm tắt",
     honeyFlowResumeAt: 0,
+    /** Thời điểm chạy tới của luồng ủ phân. */
+    nextCompostFlowAt: 0,
+    compostFlowStartedAt: 0,
+    compostFlowState: "Tạm tắt",
+    compostFlowResumeAt: 0,
+    lastCompostActionAt: 0,
     /** Đồng bộ từ storage: số lần tải lại để thoát captcha Goblin/Moon. */
     captchaGoblinMoonReloadSkipCount: 0,
     /** Số lần giải captcha Goblin/Moon thành công. */

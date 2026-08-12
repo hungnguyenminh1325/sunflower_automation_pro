@@ -66,14 +66,14 @@
     merged.mineTargetGold = asBoolPreferTrue(merged.mineTargetGold, D.mineTargetGold);
     merged.mineTargetCrimstone = asBoolPreferTrue(merged.mineTargetCrimstone, D.mineTargetCrimstone);
     merged.mineTargetSunstone = asBoolPreferTrue(merged.mineTargetSunstone, D.mineTargetSunstone);
-    merged.cropDomSeedName = String(merged.cropDomSeedName == null ? D.cropDomSeedName : merged.cropDomSeedName).trim();
+    merged.cropDomSeedName = "";
     merged.cropDomMinSeedCount = Math.max(0, Math.min(500, Math.floor(Number(merged.cropDomMinSeedCount) || D.cropDomMinSeedCount)));
     merged.cropDomSkipLongGrow = false;
     merged.cropDomBuySeedsAtBetty = false;
     merged.autoPetalHarvestDom = asBool(merged.autoPetalHarvestDom, D.autoPetalHarvestDom);
     merged.autoFruitTree = asBool(merged.autoFruitTree, D.autoFruitTree);
     merged.autoHoney = asBool(merged.autoHoney, D.autoHoney);
-    merged.cookPreferredRecipe = String(merged.cookPreferredRecipe || D.cookPreferredRecipe || "").trim();
+    merged.cookPreferredRecipe = "";
     merged.reloadPageOnGoblinMoonCaptcha = true;
     merged.actionGapMs = Math.max(800, Math.min(30000, Math.floor(Number(merged.actionGapMs) || D.actionGapMs)));
     merged.tickMs = Math.max(400, Math.min(10000, Math.floor(Number(merged.tickMs) || D.tickMs)));

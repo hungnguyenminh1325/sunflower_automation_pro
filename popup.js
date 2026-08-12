@@ -4,10 +4,8 @@ const ids = {
   autoSunflowerBasic: document.getElementById("autoSunflowerBasic"),
   autoCookFirePit: document.getElementById("autoCookFirePit"),
   autoCookKitchen: document.getElementById("autoCookKitchen"),
-  cookPreferredRecipe: document.getElementById("cookPreferredRecipe"),
   autoFruitTree: document.getElementById("autoFruitTree"),
   autoHoney: document.getElementById("autoHoney"),
-  cropDomSeedName: document.getElementById("cropDomSeedName"),
 
   mineTargetStone: document.getElementById("mineTargetStone"),
   mineTargetIron: document.getElementById("mineTargetIron"),
@@ -131,12 +129,12 @@ function readUiSettings() {
     autoMine: !!ids.autoSunflowerBasic?.checked,
     autoCookFirePit: !!ids.autoCookFirePit?.checked,
     autoCookKitchen: !!ids.autoCookKitchen?.checked,
-    cookPreferredRecipe: String(ids.cookPreferredRecipe?.value || "").trim(),
+    cookPreferredRecipe: "",
     autoFruitTree: !!ids.autoFruitTree?.checked,
     autoHoney: !!ids.autoHoney?.checked,
     reloadPageOnGoblinMoonCaptcha: true,
     autoFarmCropsDom: !!ids.autoSunflowerBasic?.checked,
-    cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
+    cropDomSeedName: "",
     cropDomSkipLongGrow: false,
     cropDomBuySeedsAtBetty: false,
     autoHarvestMushrooms: !!ids.autoSunflowerBasic?.checked,
@@ -156,14 +154,8 @@ function renderSettings(settings) {
   if (ids.autoSunflowerBasic) ids.autoSunflowerBasic.checked = !!settings.autoSunflowerBasic;
   if (ids.autoCookFirePit) ids.autoCookFirePit.checked = !!settings.autoCookFirePit;
   if (ids.autoCookKitchen) ids.autoCookKitchen.checked = !!settings.autoCookKitchen;
-  if (ids.cookPreferredRecipe) {
-    ids.cookPreferredRecipe.value = String(settings.cookPreferredRecipe || "").trim();
-  }
   if (ids.autoFruitTree) ids.autoFruitTree.checked = !!settings.autoFruitTree;
   if (ids.autoHoney) ids.autoHoney.checked = !!settings.autoHoney;
-  if (ids.cropDomSeedName) {
-    ids.cropDomSeedName.value = String(settings.cropDomSeedName ?? "").trim();
-  }
 
   if (ids.mineTargetStone) ids.mineTargetStone.checked = settings.mineTargetStone !== false;
   if (ids.mineTargetIron) ids.mineTargetIron.checked = settings.mineTargetIron !== false;
@@ -240,10 +232,8 @@ const autoSaveTargets = [
   ids.autoSunflowerBasic,
   ids.autoCookFirePit,
   ids.autoCookKitchen,
-  ids.cookPreferredRecipe,
   ids.autoFruitTree,
   ids.autoHoney,
-  ids.cropDomSeedName,
   ids.mineTargetStone,
   ids.mineTargetIron,
   ids.mineTargetGold,

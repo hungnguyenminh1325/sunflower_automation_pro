@@ -274,7 +274,7 @@
    * Ưu tiên: hạt ưu tiên người dùng → rẻ nhất theo mùa → ngắn nhất nếu skipLongGrow.
    */
   function getNextSeedToBuyViaEvent(stock, seasonKey, preferredSeed, skipLongGrow) {
-    let bumpkinLevel = 999;
+    let bumpkinLevel = 1; // Mặc định là 1 (an toàn nhất, chỉ Sunflower/Potato) nếu bridge chưa sẵn sàng hoặc chưa reload trang
     if (S.gameBridge?.isReady) {
       const st = S.gameBridge.getLatestState();
       if (st) {

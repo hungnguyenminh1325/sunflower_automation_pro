@@ -102,7 +102,7 @@
     
     // Lấy tồn kho (stock) hiện tại từ game để biết hạt nào đang trong mùa và cấp độ tài khoản
     let stock = null;
-    let bumpkinLevel = 999;
+    let bumpkinLevel = 1; // Mặc định là 1 (an toàn nhất) nếu bridge chưa sẵn sàng
     if (S.gameBridge?.isReady) {
       const st = S.gameBridge.getLatestState();
       if (st) {

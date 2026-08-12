@@ -127,17 +127,26 @@
     "Kale Seed": 7,
     "Artichoke Seed": 7,
     "Barley Seed": 10,
-    "Apple Sapling": 0.25,
-    "Orange Sapling": 0.38,
-    "Blueberry Seeds": 0.05,
-    "Lemon Sapling": 0.5,
-    "Pear Sapling": 0.63,
-    "Plum Sapling": 0.75,
-    "Grape Sapling": 1.0,
-    "Banana Sapling": 1.5,
-    "Sunpetal Seed": 0.04,
-    "Bloom Seed": 0.08,
-    "Lily Seed": 0.15,
+    "Apple Seed": 50.0,
+    "Apple Sapling": 50.0,
+    "Orange Seed": 50.0,
+    "Orange Sapling": 50.0,
+    "Blueberry Seed": 12.0,
+    "Blueberry Seeds": 12.0,
+    "Lemon Seed": 50.0,
+    "Lemon Sapling": 50.0,
+    "Pear Seed": 50.0,
+    "Pear Sapling": 50.0,
+    "Plum Seed": 60.0,
+    "Plum Sapling": 60.0,
+    "Grape Seed": 50.0,
+    "Grape Sapling": 50.0,
+    "Banana Seed": 70.0,
+    "Banana Sapling": 70.0,
+    "Banana Plant": 70.0,
+    "Sunpetal Seed": 5.0,
+    "Bloom Seed": 10.0,
+    "Lily Seed": 20.0,
   };
 
   /** Thứ tự ưu tiên mua hạt — rẻ nhất / phổ biến nhất trước. */
@@ -168,6 +177,7 @@
     "Grape Sapling",
     "Banana Seed",
     "Banana Sapling",
+    "Banana Plant",
   ];
 
   /** Hạt giống hoa (Flower) */
@@ -4208,8 +4218,6 @@
 
     const seasonKey = normalizeSeasonName(st.season);
     let coins = typeof st.coins === "number" && Number.isFinite(st.coins) ? st.coins : 0;
-    let sfl = typeof st.balance === "number" ? st.balance : Number(st.balance || 0);
-    if (!Number.isFinite(sfl)) sfl = 0;
 
     const stock = st.stock || {};
     const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
@@ -4232,7 +4240,7 @@
 
     const seedsToBuy = [...cropSeeds, ...extraSeeds];
 
-    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins, sfl });
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
 
     // Debug log kiểm tra tồn kho cây ăn quả
     const fruitStockDetails = {};
@@ -4253,12 +4261,8 @@
       const price = getNormalSeedBuyPriceDom(seed);
       if (price === Number.MAX_SAFE_INTEGER) continue;
 
-      // Phân biệt tiền tệ: Cây ăn quả & hoa dùng SFL (st.balance), ruộng dùng Coins (st.coins)
-      const isFruitOrFlower = FRUIT_SAPLINGS_DOM.includes(seed) || FLOWER_SEEDS_DOM.includes(seed);
-      const currencyBalance = isFruitOrFlower ? sfl : coins;
-
-      if (currencyBalance < price) {
-        continue; // Không đủ tiền mua loại hạt này
+      if (coins < price) {
+        continue; // Không đủ xu để mua hạt này
       }
 
       // Chờ cho đến khi game sẵn sàng (hết trạng thái autosaving/pending_actions của giao dịch trước)
@@ -4268,12 +4272,10 @@
         continue;
       }
 
-      // Cập nhật lại số dư tiền tệ và stock mới nhất từ máy chủ sau khi game đã sẵn sàng
+      // Cập nhật lại số xu và tồn kho mới nhất từ máy chủ sau khi game sẵn sàng
       const currentSt = S.gameBridge.getLatestState();
       if (currentSt) {
         coins = typeof currentSt.coins === "number" && Number.isFinite(currentSt.coins) ? currentSt.coins : coins;
-        sfl = typeof currentSt.balance === "number" ? currentSt.balance : Number(currentSt.balance || 0);
-        if (!Number.isFinite(sfl)) sfl = 0;
         if (currentSt.stock) {
           Object.assign(stock, currentSt.stock);
         }
@@ -4283,8 +4285,7 @@
       if (freshAvailable <= 0) continue;
 
       // Mua tối đa số lượng affordable trong stock
-      const freshCurrencyBalance = isFruitOrFlower ? sfl : coins;
-      const amount = Math.min(freshAvailable, Math.floor(freshCurrencyBalance / price));
+      const amount = Math.min(freshAvailable, Math.floor(coins / price));
       if (amount <= 0) continue;
 
       logFlow(`Reset Purchase: Đang tiến hành mua ${amount} hạt ${seed} (giá ${price} xu/hạt)`, {});
@@ -4316,22 +4317,16 @@
 
         const freshSt = S.gameBridge.getLatestState();
         if (freshSt) {
-          coins = typeof freshSt.coins === "number" && Number.isFinite(freshSt.coins) ? freshSt.coins : (coins - (isFruitOrFlower ? 0 : amount * price));
-          sfl = typeof freshSt.balance === "number" ? freshSt.balance : Number(freshSt.balance || 0);
-          if (!Number.isFinite(sfl)) sfl = 0;
+          coins = typeof freshSt.coins === "number" && Number.isFinite(freshSt.coins) ? freshSt.coins : (coins - amount * price);
           if (freshSt.stock) {
             Object.assign(stock, freshSt.stock);
           }
         } else {
-          if (isFruitOrFlower) {
-            sfl -= amount * price;
-          } else {
-            coins -= amount * price;
-          }
+          coins -= amount * price;
           stock[seed] = Math.max(0, freshAvailable - amount);
         }
 
-        logFlow(`Reset Purchase: Đã mua thành công ${amount} hạt ${seed}`, { coinsLeft: coins, sflLeft: sfl });
+        logFlow(`Reset Purchase: Đã mua thành công ${amount} hạt ${seed}`, { coinsLeft: coins });
         // Đợi 10 giây trước khi tiếp tục mua hạt tiếp theo để bảo đảm giao dịch lưu hoàn tất
         await sleep(rand(10000, 11000));
       } else {

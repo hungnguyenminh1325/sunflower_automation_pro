@@ -32,6 +32,7 @@
     "Grape Sapling",
     "Banana Seed",
     "Banana Sapling",
+    "Banana Plant",
   ];
 
   function imgAssetUrl(img) {
@@ -98,9 +99,24 @@
 
   function getBestSaplingFromInventory(inventory) {
     if (!inventory) return null;
-    // Thứ tự ưu tiên có thể theo XP (giống nấu ăn) hoặc đơn giản là theo danh sách
+    
+    // Lấy tồn kho (stock) hiện tại từ game để biết hạt nào đang trong mùa
+    let stock = null;
+    if (S.gameBridge?.isReady) {
+      const st = S.gameBridge.getLatestState();
+      if (st && st.stock) stock = st.stock;
+    }
+
+    // Thứ tự ưu tiên theo danh sách SAPLING_NAMES
     for (const name of SAPLING_NAMES) {
-      if ((inventory[name] || 0) >= 1) return name;
+      if ((inventory[name] || 0) >= 1) {
+        // Chỉ gieo trồng nếu hạt giống này có bán trong shop hiện tại (tức là đúng mùa)
+        // Nếu không có thông tin stock (game lag/chưa load), ta fallback cho phép gieo để tránh kẹt
+        if (stock && stock[name] === undefined) {
+          continue;
+        }
+        return name;
+      }
     }
     return null;
   }

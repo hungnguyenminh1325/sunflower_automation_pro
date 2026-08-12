@@ -16,13 +16,21 @@
   const FRUIT_FLOW_READY_GAP_MS = 1500;
 
   const SAPLING_NAMES = [
+    "Apple Seed",
     "Apple Sapling",
+    "Orange Seed",
     "Orange Sapling",
+    "Blueberry Seed",
     "Blueberry Seeds",
+    "Lemon Seed",
     "Lemon Sapling",
+    "Pear Seed",
     "Pear Sapling",
+    "Plum Seed",
     "Plum Sapling",
+    "Grape Seed",
     "Grape Sapling",
+    "Banana Seed",
     "Banana Sapling",
   ];
 

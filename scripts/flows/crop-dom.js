@@ -152,13 +152,21 @@
 
   /** Hạt giống cây ăn quả (Fruit) */
   const FRUIT_SAPLINGS_DOM = [
+    "Apple Seed",
     "Apple Sapling",
+    "Orange Seed",
     "Orange Sapling",
+    "Blueberry Seed",
     "Blueberry Seeds",
+    "Lemon Seed",
     "Lemon Sapling",
+    "Pear Seed",
     "Pear Sapling",
+    "Plum Seed",
     "Plum Sapling",
+    "Grape Seed",
     "Grape Sapling",
+    "Banana Seed",
     "Banana Sapling",
   ];
 

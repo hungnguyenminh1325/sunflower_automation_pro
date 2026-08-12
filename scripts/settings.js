@@ -74,7 +74,7 @@
     merged.autoFruitTree = asBool(merged.autoFruitTree, D.autoFruitTree);
     merged.autoHoney = asBool(merged.autoHoney, D.autoHoney);
     merged.cookPreferredRecipe = String(merged.cookPreferredRecipe || D.cookPreferredRecipe || "").trim();
-    merged.reloadPageOnGoblinMoonCaptcha = asBool(merged.reloadPageOnGoblinMoonCaptcha, D.reloadPageOnGoblinMoonCaptcha);
+    merged.reloadPageOnGoblinMoonCaptcha = true;
     merged.actionGapMs = Math.max(800, Math.min(30000, Math.floor(Number(merged.actionGapMs) || D.actionGapMs)));
     merged.tickMs = Math.max(400, Math.min(10000, Math.floor(Number(merged.tickMs) || D.tickMs)));
     merged.uiDelayMinMs = Math.max(200, Math.min(5000, Math.floor(Number(merged.uiDelayMinMs) || D.uiDelayMinMs)));

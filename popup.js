@@ -8,11 +8,6 @@ const ids = {
   cookPreferredRecipe: document.getElementById("cookPreferredRecipe"),
   autoFruitTree: document.getElementById("autoFruitTree"),
   autoHoney: document.getElementById("autoHoney"),
-  reloadPageOnGoblinMoonCaptcha: document.getElementById("reloadPageOnGoblinMoonCaptcha"),
-  captchaReloadSkipCount: document.getElementById("captchaReloadSkipCount"),
-  resetCaptchaReloadSkipCount: document.getElementById("resetCaptchaReloadSkipCount"),
-  captchaSolvedCount: document.getElementById("captchaSolvedCount"),
-  captchaFailedCount: document.getElementById("captchaFailedCount"),
   cropDomSeedName: document.getElementById("cropDomSeedName"),
   cropDomSkipLongGrow: document.getElementById("cropDomSkipLongGrow"),
   cropDomBuySeedsAtBetty: document.getElementById("cropDomBuySeedsAtBetty"),
@@ -144,7 +139,7 @@ function readUiSettings() {
     cookPreferredRecipe: String(ids.cookPreferredRecipe?.value || "").trim(),
     autoFruitTree: !!ids.autoFruitTree?.checked,
     autoHoney: !!ids.autoHoney?.checked,
-    reloadPageOnGoblinMoonCaptcha: !!ids.reloadPageOnGoblinMoonCaptcha?.checked,
+    reloadPageOnGoblinMoonCaptcha: true,
     autoFarmCropsDom: !!ids.autoSunflowerBasic?.checked,
     cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
     cropDomSkipLongGrow: !!ids.cropDomSkipLongGrow?.checked,
@@ -172,9 +167,6 @@ function renderSettings(settings) {
   }
   if (ids.autoFruitTree) ids.autoFruitTree.checked = !!settings.autoFruitTree;
   if (ids.autoHoney) ids.autoHoney.checked = !!settings.autoHoney;
-  if (ids.reloadPageOnGoblinMoonCaptcha) {
-    ids.reloadPageOnGoblinMoonCaptcha.checked = !!settings.reloadPageOnGoblinMoonCaptcha;
-  }
   if (ids.cropDomSeedName) {
     ids.cropDomSeedName.value = String(settings.cropDomSeedName ?? "").trim();
   }
@@ -224,21 +216,7 @@ async function refreshStatus(opts = {}) {
   setStatusDetails({
     flows: status?.flows || null,
   });
-  if (ids.captchaReloadSkipCount) {
-    ids.captchaReloadSkipCount.textContent = String(
-      Math.max(0, Math.floor(Number(status?.captchaGoblinMoonReloadSkipCount) || 0)),
-    );
-  }
-  if (ids.captchaSolvedCount) {
-    ids.captchaSolvedCount.textContent = String(
-      Math.max(0, Math.floor(Number(status?.captchaSolvedCount) || 0)),
-    );
-  }
-  if (ids.captchaFailedCount) {
-    ids.captchaFailedCount.textContent = String(
-      Math.max(0, Math.floor(Number(status?.captchaFailedCount) || 0)),
-    );
-  }
+
 }
 
 async function saveSettingsAuto() {
@@ -276,7 +254,6 @@ const autoSaveTargets = [
   ids.cookPreferredRecipe,
   ids.autoFruitTree,
   ids.autoHoney,
-  ids.reloadPageOnGoblinMoonCaptcha,
   ids.cropDomSeedName,
   ids.cropDomSkipLongGrow,
   ids.cropDomBuySeedsAtBetty,
@@ -299,21 +276,7 @@ for (const node of autoSaveTargets) {
 
 
 
-ids.resetCaptchaReloadSkipCount?.addEventListener("click", async () => {
-  const tab = await getGameTab();
-  if (!tab?.id) {
-    setStatus("Hãy mở sunflower-land.com/play trước.", "warn");
-    return;
-  }
-  const result = await send(tab.id, { type: "SFL_UI_RESET_CAPTCHA_RELOAD_SKIP_COUNT" });
-  if (!result.ok || !result.data?.ok) {
-    setStatus("Không xóa được số đếm (tab game cần mở).", "warn");
-    return;
-  }
-  if (ids.captchaReloadSkipCount) ids.captchaReloadSkipCount.textContent = "0";
-  setStatus("Đã xóa số đếm thoát captcha.", "live");
-  await refreshStatus({ syncForm: false });
-});
+
 
 
 

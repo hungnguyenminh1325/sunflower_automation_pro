@@ -64,6 +64,43 @@
     { item: "Sushi Roll", xp: 2000, ingredients: { Angelfish: 1, Seaweed: 1, Rice: 2 } },
   ];
 
+  const BAKERY_RECIPES = [
+    { item: "Eggplant Cake", xp: 42000, ingredients: { Eggplant: 30, Wheat: 15 } },
+    { item: "Radish Cake", xp: 38500, ingredients: { Radish: 25, Wheat: 15 } },
+    { item: "Parsnip Cake", xp: 35000, ingredients: { Parsnip: 40, Wheat: 15 } },
+    { item: "Cauliflower Cake", xp: 31500, ingredients: { Cauliflower: 60, Wheat: 15 } },
+    { item: "Beetroot Cake", xp: 28000, ingredients: { Beetroot: 100, Wheat: 15 } },
+    { item: "Cabbage Cake", xp: 24500, ingredients: { Cabbage: 200, Wheat: 15 } },
+    { item: "Carrot Cake", xp: 21000, ingredients: { Carrot: 300, Wheat: 15 } },
+    { item: "Orange Cake", xp: 18000, ingredients: { Orange: 10, Wheat: 10 } },
+    { item: "Potato Cake", xp: 17500, ingredients: { Potato: 500, Wheat: 15 } },
+    { item: "Corn Bread", xp: 15000, ingredients: { Corn: 15, Wheat: 20 } },
+    { item: "Blueberry Tart", xp: 15000, ingredients: { Blueberry: 10, Wheat: 10 } },
+    { item: "Sunflower Cake", xp: 14000, ingredients: { Sunflower: 1000, Wheat: 15 } },
+    { item: "Apple Pie", xp: 12000, ingredients: { Apple: 10, Wheat: 10 } },
+    { item: "Pumpkin Cake", xp: 10500, ingredients: { Pumpkin: 130, Wheat: 15 } },
+    { item: "Wheat Cake", xp: 7000, ingredients: { Wheat: 35 } },
+  ];
+
+  const DELI_RECIPES = [
+    { item: "Fermented Fish", xp: 15000, ingredients: { Anchovy: 5, Olive: 10 } },
+    { item: "Garlic Bread", xp: 12000, ingredients: { Garlic: 10, Wheat: 20 } },
+    { item: "Cheese", xp: 12000, ingredients: { Milk: 3 } },
+    { item: "Kimchi", xp: 8000, ingredients: { Radish: 30, Cabbage: 30 } },
+    { item: "Butter", xp: 6000, ingredients: { Milk: 1 } },
+    { item: "Sauerkraut", xp: 5000, ingredients: { Cabbage: 50 } },
+    { item: "Fermented Carrots", xp: 2500, ingredients: { Carrot: 50 } },
+  ];
+
+  const SMOOTHIE_SHACK_RECIPES = [
+    { item: "Power Smoothie", xp: 12000, ingredients: { Kale: 20, Apple: 5, Blueberry: 5 } },
+    { item: "Banana Blast", xp: 6000, ingredients: { Banana: 5 } },
+    { item: "Blueberry Shake", xp: 4500, ingredients: { Blueberry: 5 } },
+    { item: "Orange Juice", xp: 3500, ingredients: { Orange: 5 } },
+    { item: "Apple Juice", xp: 2500, ingredients: { Apple: 5 } },
+    { item: "Sunflower Smoothie", xp: 800, ingredients: { Sunflower: 100 } },
+  ];
+
   const cookLogAt = new Map();
 
   function nowMs() {
@@ -176,15 +213,24 @@
   }
 
   function isCookEnabled() {
-    return !!(runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen);
+    return !!(
+      runtime.settings.autoCook ||
+      runtime.settings.autoCookFirePit ||
+      runtime.settings.autoCookKitchen ||
+      runtime.settings.autoCookBakery ||
+      runtime.settings.autoCookDeli ||
+      runtime.settings.autoCookSmoothieShack
+    );
   }
 
   function getEnabledCookingConfigs() {
-    const enableFirePit = !!runtime.settings.autoCookFirePit;
-    const enableKitchen = !!runtime.settings.autoCookKitchen;
+    const allOn = !!runtime.settings.autoCook;
     const list = [];
-    if (enableFirePit) list.push({ name: "Fire Pit", recipes: FIRE_PIT_RECIPES });
-    if (enableKitchen) list.push({ name: "Kitchen", recipes: KITCHEN_RECIPES });
+    if (allOn || runtime.settings.autoCookFirePit) list.push({ name: "Fire Pit", recipes: FIRE_PIT_RECIPES });
+    if (allOn || runtime.settings.autoCookKitchen) list.push({ name: "Kitchen", recipes: KITCHEN_RECIPES });
+    if (allOn || runtime.settings.autoCookBakery) list.push({ name: "Bakery", recipes: BAKERY_RECIPES });
+    if (allOn || runtime.settings.autoCookDeli) list.push({ name: "Deli", recipes: DELI_RECIPES });
+    if (allOn || runtime.settings.autoCookSmoothieShack) list.push({ name: "Smoothie Shack", recipes: SMOOTHIE_SHACK_RECIPES });
     return list;
   }
 
@@ -586,5 +632,8 @@
     tryAutoCook: runCookCycle,
     FIRE_PIT_RECIPES,
     KITCHEN_RECIPES,
+    BAKERY_RECIPES,
+    DELI_RECIPES,
+    SMOOTHIE_SHACK_RECIPES,
   };
 })(window.SFL);

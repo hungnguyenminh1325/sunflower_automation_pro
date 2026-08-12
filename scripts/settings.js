@@ -32,13 +32,12 @@
   S.normalizeSettings = function normalizeSettings(input) {
     const merged = Object.assign({}, D, input || {});
 
-    if (
-      typeof input?.autoCook === "boolean" &&
-      typeof input?.autoCookFirePit !== "boolean" &&
-      typeof input?.autoCookKitchen !== "boolean"
-    ) {
+    if (typeof input?.autoCook === "boolean") {
       merged.autoCookFirePit = input.autoCook;
       merged.autoCookKitchen = input.autoCook;
+      merged.autoCookBakery = input.autoCook;
+      merged.autoCookDeli = input.autoCook;
+      merged.autoCookSmoothieShack = input.autoCook;
     }
 
     merged.masterEnabled = true;
@@ -49,8 +48,12 @@
     merged.autoMine = merged.autoSunflowerBasic;
     merged.autoFarmCropsDom = merged.autoSunflowerBasic;
     merged.autoHarvestMushrooms = merged.autoSunflowerBasic;
-    merged.autoCookFirePit = asBool(merged.autoCookFirePit, D.autoCookFirePit);
-    merged.autoCookKitchen = asBool(merged.autoCookKitchen, D.autoCookKitchen);
+    merged.autoCook = asBool(merged.autoCook, D.autoCook);
+    merged.autoCookFirePit = merged.autoCook || asBool(merged.autoCookFirePit, D.autoCookFirePit);
+    merged.autoCookKitchen = merged.autoCook || asBool(merged.autoCookKitchen, D.autoCookKitchen);
+    merged.autoCookBakery = merged.autoCook || asBool(merged.autoCookBakery, D.autoCookBakery);
+    merged.autoCookDeli = merged.autoCook || asBool(merged.autoCookDeli, D.autoCookDeli);
+    merged.autoCookSmoothieShack = merged.autoCook || asBool(merged.autoCookSmoothieShack, D.autoCookSmoothieShack);
     merged.mushroomTargetWild = true;
     merged.mushroomTargetMagic = true;
     merged.clearConsole = asBool(merged.clearConsole, D.clearConsole);
@@ -129,8 +132,8 @@
     const fruitTreeToggledOn = !prev.autoFruitTree && runtime.settings.autoFruitTree;
     const honeyToggledOn = !prev.autoHoney && runtime.settings.autoHoney;
     const compostToggledOn = !prev.autoCompost && runtime.settings.autoCompost;
-    const cookWasOff = !prev.autoCookFirePit && !prev.autoCookKitchen;
-    const cookNowOn = runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen;
+    const cookWasOff = !prev.autoCook && !prev.autoCookFirePit && !prev.autoCookKitchen && !prev.autoCookBakery && !prev.autoCookDeli && !prev.autoCookSmoothieShack;
+    const cookNowOn = runtime.settings.autoCook || runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen || runtime.settings.autoCookBakery || runtime.settings.autoCookDeli || runtime.settings.autoCookSmoothieShack;
 
     if (!runtime.settings.autoChop) {
       runtime.treeFlowStartedAt = 0;

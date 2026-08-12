@@ -1838,8 +1838,7 @@
   /** Giỏ inventory: một cú bấm — double-click dễ toggle 2 lần về ô mặc định. */
   async function clickCropInventoryBrownOnce(el) {
     if (!el || !d.isVisible(el)) return;
-    // Dùng cả native click (el.click()) + synthetic (clickAtCenter) để tương thích React event delegation
-    d.nativeClickClose(el) || d.clickAtCenter(el);
+    d.nativeClickClose(el);
     await sleep(rand(180, 320));
   }
 
@@ -1905,10 +1904,9 @@
       }
       el = el.parentElement;
     }
-    // Fallback: nếu không tìm thấy wrapper phù hợp, click thẺ ng img
+    // Fallback: nếu không tìm thấy wrapper phù hợp, click thẻ img
     if (!clickTarget) clickTarget = targetSeedImg;
-    // Dùng nativeClickClose (el.click() + clickAtCenter) để React nhận event
-    d.nativeClickClose(clickTarget) || d.clickAtCenter(clickTarget);
+    d.nativeClickClose(clickTarget);
   }
 
   async function closeInventorySeedStripIfOpen() {

@@ -2,8 +2,7 @@ const ids = {
   autoBuyTools: document.getElementById("autoBuyTools"),
   autoRestockBlacksmith: document.getElementById("autoRestockBlacksmith"),
   autoSunflowerBasic: document.getElementById("autoSunflowerBasic"),
-  autoCookFirePit: document.getElementById("autoCookFirePit"),
-  autoCookKitchen: document.getElementById("autoCookKitchen"),
+  autoCook: document.getElementById("autoCook"),
   autoFruitTree: document.getElementById("autoFruitTree"),
   autoHoney: document.getElementById("autoHoney"),
   autoCompost: document.getElementById("autoCompost"),
@@ -129,8 +128,12 @@ function readUiSettings() {
     autoSunflowerBasic: !!ids.autoSunflowerBasic?.checked,
     autoChop: !!ids.autoSunflowerBasic?.checked,
     autoMine: !!ids.autoSunflowerBasic?.checked,
-    autoCookFirePit: !!ids.autoCookFirePit?.checked,
-    autoCookKitchen: !!ids.autoCookKitchen?.checked,
+    autoCook: !!ids.autoCook?.checked,
+    autoCookFirePit: !!ids.autoCook?.checked,
+    autoCookKitchen: !!ids.autoCook?.checked,
+    autoCookBakery: !!ids.autoCook?.checked,
+    autoCookDeli: !!ids.autoCook?.checked,
+    autoCookSmoothieShack: !!ids.autoCook?.checked,
     cookPreferredRecipe: "",
     autoFruitTree: !!ids.autoFruitTree?.checked,
     autoHoney: !!ids.autoHoney?.checked,
@@ -155,8 +158,7 @@ function renderSettings(settings) {
   ids.autoBuyTools.checked = !!settings.autoBuyTools;
   if (ids.autoRestockBlacksmith) ids.autoRestockBlacksmith.checked = !!settings.autoRestockBlacksmith;
   if (ids.autoSunflowerBasic) ids.autoSunflowerBasic.checked = !!settings.autoSunflowerBasic;
-  if (ids.autoCookFirePit) ids.autoCookFirePit.checked = !!settings.autoCookFirePit;
-  if (ids.autoCookKitchen) ids.autoCookKitchen.checked = !!settings.autoCookKitchen;
+  if (ids.autoCook) ids.autoCook.checked = !!(settings.autoCook || settings.autoCookFirePit || settings.autoCookKitchen || settings.autoCookBakery || settings.autoCookDeli || settings.autoCookSmoothieShack);
   if (ids.autoFruitTree) ids.autoFruitTree.checked = !!settings.autoFruitTree;
   if (ids.autoHoney) ids.autoHoney.checked = !!settings.autoHoney;
   if (ids.autoCompost) ids.autoCompost.checked = !!settings.autoCompost;
@@ -253,8 +255,7 @@ const autoSaveTargets = [
   ids.autoBuyTools,
   ids.autoRestockBlacksmith,
   ids.autoSunflowerBasic,
-  ids.autoCookFirePit,
-  ids.autoCookKitchen,
+  ids.autoCook,
   ids.autoFruitTree,
   ids.autoHoney,
   ids.autoCompost,

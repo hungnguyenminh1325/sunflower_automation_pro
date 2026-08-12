@@ -312,12 +312,12 @@
     try {
       if (typeof el.click === "function") {
         el.click();
+        return true;
       }
     } catch (_e) {
       // ignore
     }
-    d.clickAtCenter(el);
-    return true;
+    return d.clickAtCenter(el);
   };
 
   d.textOf = function textOf(el) {

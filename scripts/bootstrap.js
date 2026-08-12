@@ -1,7 +1,7 @@
 (function (S) {
   "use strict";
   const runtime = S.runtime;
-  const version = "1.0.0";
+  const version = "2.14.0";
   console.log(`%c[SFL UI] Tool v${version} loaded (at ${new Date().toLocaleTimeString()})`, "color: #00ff00; font-weight: bold;");
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -322,6 +322,14 @@
         if (schema < 17) {
           Object.assign(patch, {
             autoCompost: S.DEFAULT_SETTINGS.autoCompost,
+          });
+        }
+        if (schema < 18) {
+          Object.assign(patch, {
+            autoCook: S.DEFAULT_SETTINGS.autoCook,
+            autoCookBakery: S.DEFAULT_SETTINGS.autoCookBakery,
+            autoCookDeli: S.DEFAULT_SETTINGS.autoCookDeli,
+            autoCookSmoothieShack: S.DEFAULT_SETTINGS.autoCookSmoothieShack,
           });
         }
         settings = S.normalizeSettings(Object.assign({}, settings, patch));

@@ -4,7 +4,7 @@
   S.SETTINGS_SCHEMA_STORAGE_KEY = "sfl_ui_only_settings_schema";
   /** Số lần đã tải lại trang để thoát captcha Goblin/Moon (chrome.storage.local, không nằm trong settings JSON). */
   S.CAPTCHA_GOBLIN_MOON_RELOAD_SKIP_COUNT_KEY = "sfl_ui_captcha_goblin_moon_reload_skip_count";
-  S.SETTINGS_SCHEMA_VERSION = 17;
+  S.SETTINGS_SCHEMA_VERSION = 18;
   S.DEFAULT_SETTINGS = {
     masterEnabled: true,
     autoBuyTools: false,
@@ -12,8 +12,12 @@
     autoSunflowerBasic: true,
     autoChop: true,
     autoMine: true,
+    autoCook: false,
     autoCookFirePit: false,
     autoCookKitchen: false,
+    autoCookBakery: false,
+    autoCookDeli: false,
+    autoCookSmoothieShack: false,
     autoHarvestMushrooms: true,
     mushroomTargetWild: true,
     mushroomTargetMagic: true,

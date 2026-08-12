@@ -1,116 +1,113 @@
 <!doctype html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sunflower Land UI Automation</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main class="popup-container">
-      <header class="app-header">
-        <div>
-          <p class="eyebrow">Sunflower Land</p>
-          <h1>UI Automation</h1>
-        </div>
-        <span class="version-tag">v2.1.0</span>
-      </header>
 
-      <div class="divider"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sunflower Land UI Automation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-      <section class="settings-section">
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Auto mua công cụ + hạt giống</strong>
-          </span>
-          <input id="autoBuyTools" type="checkbox" class="custom-checkbox" />
+<body>
+  <main class="popup-container">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Sunflower Land</p>
+        <h1>UI Automation</h1>
+      </div>
+      <span class="version-tag">v2.14.0</span>
+    </header>
+
+    <div class="divider"></div>
+
+    <section class="settings-section">
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Auto mua công cụ + hạt giống</strong>
+        </span>
+        <input id="autoBuyTools" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Restock Blacksmith khi hết stock</strong>
+        </span>
+        <input id="autoRestockBlacksmith" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Sunflower cơ bản</strong>
+        </span>
+        <input id="autoSunflowerBasic" type="checkbox" class="custom-checkbox" checked />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Tự động nấu ăn</strong>
+        </span>
+        <input id="autoCook" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
+        </span>
+        <input id="autoFruitTree" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Thu hoạch hoa, mật ong (DOM + Bridge)</strong>
+        </span>
+        <input id="autoHoney" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <label class="setting-row">
+        <span class="setting-copy">
+          <strong>Tự ủ phân (Composter DOM)</strong>
+        </span>
+        <input id="autoCompost" type="checkbox" class="custom-checkbox" />
+      </label>
+
+      <p class="section-title">Quặng cần đào:</p>
+      <div class="mine-target-bunch">
+        <label class="mine-chip">
+          <input id="mineTargetStone" type="checkbox" checked />
+          <span>Đá (stone)</span>
         </label>
-
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Restock Blacksmith khi hết stock</strong>
-          </span>
-          <input id="autoRestockBlacksmith" type="checkbox" class="custom-checkbox" />
+        <label class="mine-chip">
+          <input id="mineTargetIron" type="checkbox" checked />
+          <span>Sắt (iron)</span>
         </label>
-
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Sunflower cơ bản</strong>
-          </span>
-          <input id="autoSunflowerBasic" type="checkbox" class="custom-checkbox" checked />
+        <label class="mine-chip">
+          <input id="mineTargetGold" type="checkbox" checked />
+          <span>Vàng (gold rock)</span>
         </label>
-
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Tự nấu Fire Pit (bridge)</strong>
-          </span>
-          <input id="autoCookFirePit" type="checkbox" class="custom-checkbox" />
+        <label class="mine-chip">
+          <input id="mineTargetCrimstone" type="checkbox" checked />
+          <span>Crimstone</span>
         </label>
-
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Tự nấu Kitchen (bridge)</strong>
-          </span>
-          <input id="autoCookKitchen" type="checkbox" class="custom-checkbox" />
+        <label class="mine-chip">
+          <input id="mineTargetSunstone" type="checkbox" />
+          <span>Sunstone</span>
         </label>
+      </div>
+    </section>
 
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
-          </span>
-          <input id="autoFruitTree" type="checkbox" class="custom-checkbox" />
-        </label>
+    <div class="divider"></div>
 
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Thu hoạch hoa, mật ong (DOM + Bridge)</strong>
-          </span>
-          <input id="autoHoney" type="checkbox" class="custom-checkbox" />
-        </label>
+    <footer class="app-status">
+      <span class="status-label">Trạng thái:</span>
+      <span id="statusText" class="status-text">Đang kết nối...</span>
+      <span id="statusBadge" class="status-badge">Check</span>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
 
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Tự ủ phân (Composter DOM)</strong>
-          </span>
-          <input id="autoCompost" type="checkbox" class="custom-checkbox" />
-        </label>
-
-        <p class="section-title">Quặng cần đào:</p>
-        <div class="mine-target-bunch">
-          <label class="mine-chip">
-            <input id="mineTargetStone" type="checkbox" checked />
-            <span>Đá (stone)</span>
-          </label>
-          <label class="mine-chip">
-            <input id="mineTargetIron" type="checkbox" checked />
-            <span>Sắt (iron)</span>
-          </label>
-          <label class="mine-chip">
-            <input id="mineTargetGold" type="checkbox" checked />
-            <span>Vàng (gold rock)</span>
-          </label>
-          <label class="mine-chip">
-            <input id="mineTargetCrimstone" type="checkbox" checked />
-            <span>Crimstone</span>
-          </label>
-          <label class="mine-chip">
-            <input id="mineTargetSunstone" type="checkbox" />
-            <span>Sunstone</span>
-          </label>
-        </div>
-      </section>
-
-      <div class="divider"></div>
-
-      <footer class="app-status">
-        <span class="status-label">Trạng thái:</span>
-        <span id="statusText" class="status-text">Đang kết nối...</span>
-        <span id="statusBadge" class="status-badge">Check</span>
-      </footer>
-    </main>
-    <script src="popup.js"></script>
-  </body>
 </html>

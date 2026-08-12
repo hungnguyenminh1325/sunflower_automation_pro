@@ -92,20 +92,54 @@
     return { nextAt: t + FRUIT_FLOW_PROBE_MS, reason: "Chờ quả chín" };
   }
 
-  async function tryHarvestFruit() {
-    // Tìm bằng DOM: thanh tiến trình đầy
-    const hits = S.dom.collectDocumentsForGameDom().flatMap(doc => {
-       const progressBars = doc.querySelectorAll('div.relative.w-full.bg-blue-600, div.relative.w-full.bg-orange-500');
-       return Array.from(progressBars).filter(el => {
-          const w = el.style.width;
-          return w === "100%" || w === "100.00%";
-       }).map(el => getFruitPatchRoot(el)).filter(Boolean);
-    });
+  function collectAllFruitPatchRoots() {
+    const docs = d.collectDocumentsForGameDom();
+    const roots = new Set();
+    for (const doc of docs) {
+      const imgs = doc.querySelectorAll('img[src*="/fruit/"], img[src*="fruit_"], img[src*="fruit/"]');
+      for (const img of imgs) {
+        const root = getFruitPatchRoot(img);
+        if (root && d.isVisible(root)) {
+          roots.add(root);
+        }
+      }
+    }
+    return Array.from(roots);
+  }
 
-    if (hits.length > 0) {
-      const target = hits[0];
-      logFlow("Cây ăn quả: thu hoạch quả chín", {});
-      d.click(target);
+  async function tryHarvestFruit() {
+    const roots = collectAllFruitPatchRoots();
+    for (const root of roots) {
+      // 1. Check if it's growing (has empty_bar.png)
+      const hasProgressBar = !!root.querySelector('img[src*="empty_bar"]');
+      if (hasProgressBar) continue;
+
+      // 2. Check if it's dead (requires axe)
+      let isDead = false;
+      const deadImgs = root.querySelectorAll(FRUIT_DEAD_TREE_IMG_SELECTOR);
+      if (deadImgs.length > 0) isDead = true;
+      if (!isDead) {
+        const imgs = root.querySelectorAll('img[src]');
+        for (const img of imgs) {
+          if (isFruitDeadTreeViaFiber(img)) {
+            isDead = true;
+            break;
+          }
+        }
+      }
+      if (isDead) continue;
+
+      // 3. Check if it's empty (only has fruit_patch.png)
+      const imgs = Array.from(root.querySelectorAll('img[src]'));
+      const activeFruitImgs = imgs.filter(img => {
+        const src = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        return (src.includes('/fruit/') || src.includes('fruit_') || src.includes('fruit/')) && !src.includes('fruit_patch');
+      });
+      if (activeFruitImgs.length === 0) continue; // Empty or no fruit
+
+      // If all checks pass, it is ripe and ready to harvest!
+      logFlow("Cây ăn quả: phát hiện quả chín sẵn sàng thu hoạch", {});
+      d.click(root);
       await uiJitter();
       return true;
     }

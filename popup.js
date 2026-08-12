@@ -7,7 +7,8 @@ const ids = {
   autoCookFirePit: document.getElementById("autoCookFirePit"),
   autoCookKitchen: document.getElementById("autoCookKitchen"),
   cookPreferredRecipe: document.getElementById("cookPreferredRecipe"),
-  autoPetalHarvestDom: document.getElementById("autoPetalHarvestDom"),
+  autoFruitTree: document.getElementById("autoFruitTree"),
+  autoHoney: document.getElementById("autoHoney"),
   reloadPageOnGoblinMoonCaptcha: document.getElementById("reloadPageOnGoblinMoonCaptcha"),
   captchaReloadSkipCount: document.getElementById("captchaReloadSkipCount"),
   resetCaptchaReloadSkipCount: document.getElementById("resetCaptchaReloadSkipCount"),
@@ -75,15 +76,26 @@ const cookFlowEls = {
   queue: document.getElementById("cookFlowQueue"),
 };
 
-const petalFlowEls = {
-  name: document.getElementById("petalFlowName"),
-  state: document.getElementById("petalFlowState"),
-  start: document.getElementById("petalFlowStart"),
-  next: document.getElementById("petalFlowNext"),
-  progress: document.getElementById("petalFlowProgress"),
-  percent: document.getElementById("petalFlowPercent"),
-  queue: document.getElementById("petalFlowQueue"),
+const fruitTreeFlowEls = {
+  name: document.getElementById("fruitTreeFlowName"),
+  state: document.getElementById("fruitTreeFlowState"),
+  start: document.getElementById("fruitTreeFlowStart"),
+  next: document.getElementById("fruitTreeFlowNext"),
+  progress: document.getElementById("fruitTreeFlowProgress"),
+  percent: document.getElementById("fruitTreeFlowPercent"),
+  queue: document.getElementById("fruitTreeFlowQueue"),
 };
+
+const honeyFlowEls = {
+  name: document.getElementById("honeyFlowName"),
+  state: document.getElementById("honeyFlowState"),
+  start: document.getElementById("honeyFlowStart"),
+  next: document.getElementById("honeyFlowNext"),
+  progress: document.getElementById("honeyFlowProgress"),
+  percent: document.getElementById("honeyFlowPercent"),
+  queue: document.getElementById("honeyFlowQueue"),
+};
+
 
 function setStatus(text, tone = "neutral") {
   ids.statusText.textContent = text;
@@ -111,7 +123,8 @@ function setStatusDetails({
   renderFlowCard(flows?.ore, oreFlowEls);
   renderFlowCard(flows?.mushroom, mushroomFlowEls);
   renderFlowCard(flows?.cook, cookFlowEls);
-  renderFlowCard(flows?.petal, petalFlowEls);
+  renderFlowCard(flows?.fruitTree, fruitTreeFlowEls);
+  renderFlowCard(flows?.honey, honeyFlowEls);
 }
 
 function formatTime(value) {
@@ -203,6 +216,8 @@ const CONTENT_SCRIPT_FILES = [
   "scripts/flows/cook.js",
   "scripts/flows/crop-dom.js",
   "scripts/flows/petal-collect-dom.js",
+  "scripts/flows/fruit-tree.js",
+  "scripts/flows/honey.js",
   "scripts/automation.js",
   "scripts/bootstrap.js",
 ];
@@ -259,10 +274,11 @@ function readUiSettings() {
     autoCookFirePit: !!ids.autoCookFirePit?.checked,
     autoCookKitchen: !!ids.autoCookKitchen?.checked,
     cookPreferredRecipe: String(ids.cookPreferredRecipe?.value || "").trim(),
-    autoPetalHarvestDom: !!ids.autoPetalHarvestDom?.checked,
+    autoFruitTree: !!ids.autoFruitTree?.checked,
+    autoHoney: !!ids.autoHoney?.checked,
     reloadPageOnGoblinMoonCaptcha: !!ids.reloadPageOnGoblinMoonCaptcha?.checked,
     autoFarmCropsDom: !!ids.autoFarmCropsDom?.checked,
-    cropDomSeedName: String(ids.cropDomSeedName?.value || "Sunflower Seed").trim() || "Sunflower Seed",
+    cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
     cropDomSkipLongGrow: !!ids.cropDomSkipLongGrow?.checked,
     cropDomBuySeedsAtBetty: !!ids.cropDomBuySeedsAtBetty?.checked,
     autoHarvestMushrooms: !!ids.autoHarvestMushrooms?.checked,
@@ -291,13 +307,14 @@ function renderSettings(settings) {
   if (ids.cookPreferredRecipe) {
     ids.cookPreferredRecipe.value = String(settings.cookPreferredRecipe || "").trim();
   }
-  if (ids.autoPetalHarvestDom) ids.autoPetalHarvestDom.checked = !!settings.autoPetalHarvestDom;
+  if (ids.autoFruitTree) ids.autoFruitTree.checked = !!settings.autoFruitTree;
+  if (ids.autoHoney) ids.autoHoney.checked = !!settings.autoHoney;
   if (ids.reloadPageOnGoblinMoonCaptcha) {
     ids.reloadPageOnGoblinMoonCaptcha.checked = !!settings.reloadPageOnGoblinMoonCaptcha;
   }
   if (ids.autoFarmCropsDom) ids.autoFarmCropsDom.checked = !!settings.autoFarmCropsDom;
   if (ids.cropDomSeedName) {
-    ids.cropDomSeedName.value = String(settings.cropDomSeedName || "Sunflower Seed").trim() || "Sunflower Seed";
+    ids.cropDomSeedName.value = String(settings.cropDomSeedName ?? "").trim();
   }
   if (ids.cropDomSkipLongGrow) ids.cropDomSkipLongGrow.checked = !!settings.cropDomSkipLongGrow;
   if (ids.cropDomBuySeedsAtBetty) ids.cropDomBuySeedsAtBetty.checked = settings.cropDomBuySeedsAtBetty === true;
@@ -405,7 +422,8 @@ const autoSaveTargets = [
   ids.autoCookFirePit,
   ids.autoCookKitchen,
   ids.cookPreferredRecipe,
-  ids.autoPetalHarvestDom,
+  ids.autoFruitTree,
+  ids.autoHoney,
   ids.reloadPageOnGoblinMoonCaptcha,
   ids.autoFarmCropsDom,
   ids.cropDomSeedName,

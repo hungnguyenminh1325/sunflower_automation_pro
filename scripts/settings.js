@@ -65,11 +65,13 @@
     merged.mineTargetCrimstone = asBoolPreferTrue(merged.mineTargetCrimstone, D.mineTargetCrimstone);
     merged.mineTargetSunstone = asBoolPreferTrue(merged.mineTargetSunstone, D.mineTargetSunstone);
     merged.autoFarmCropsDom = asBool(merged.autoFarmCropsDom, D.autoFarmCropsDom);
-    merged.cropDomSeedName = String(merged.cropDomSeedName || D.cropDomSeedName || "Sunflower Seed").trim() || "Sunflower Seed";
+    merged.cropDomSeedName = String(merged.cropDomSeedName == null ? D.cropDomSeedName : merged.cropDomSeedName).trim();
     merged.cropDomMinSeedCount = Math.max(0, Math.min(500, Math.floor(Number(merged.cropDomMinSeedCount) || D.cropDomMinSeedCount)));
     merged.cropDomSkipLongGrow = asBool(merged.cropDomSkipLongGrow, D.cropDomSkipLongGrow);
     merged.cropDomBuySeedsAtBetty = merged.cropDomBuySeedsAtBetty === true;
     merged.autoPetalHarvestDom = asBool(merged.autoPetalHarvestDom, D.autoPetalHarvestDom);
+    merged.autoFruitTree = asBool(merged.autoFruitTree, D.autoFruitTree);
+    merged.autoHoney = asBool(merged.autoHoney, D.autoHoney);
     merged.cookPreferredRecipe = String(merged.cookPreferredRecipe || D.cookPreferredRecipe || "").trim();
     merged.reloadPageOnGoblinMoonCaptcha = asBool(merged.reloadPageOnGoblinMoonCaptcha, D.reloadPageOnGoblinMoonCaptcha);
     merged.actionGapMs = Math.max(800, Math.min(30000, Math.floor(Number(merged.actionGapMs) || D.actionGapMs)));
@@ -122,6 +124,8 @@
     const chopToggledOn = !prev.autoChop && runtime.settings.autoChop;
     const mineToggledOn = !prev.autoMine && runtime.settings.autoMine;
     const mushroomToggledOn = !prev.autoHarvestMushrooms && runtime.settings.autoHarvestMushrooms;
+    const fruitTreeToggledOn = !prev.autoFruitTree && runtime.settings.autoFruitTree;
+    const honeyToggledOn = !prev.autoHoney && runtime.settings.autoHoney;
     const cookWasOff = !prev.autoCookFirePit && !prev.autoCookKitchen;
     const cookNowOn = runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen;
 
@@ -158,6 +162,28 @@
       runtime.mushroomFlowStartedAt = 0;
       runtime.nextMushroomFlowAt = currentTime;
       runtime.mushroomFlowState = "Sẵn sàng";
+    }
+
+    if (!runtime.settings.autoFruitTree) {
+      runtime.fruitTreeFlowStartedAt = 0;
+      runtime.nextFruitTreeFlowAt = currentTime;
+      runtime.fruitTreeFlowState = "Tạm tắt";
+      runtime.fruitTreeFlowResumeAt = 0;
+    } else if (fruitTreeToggledOn) {
+      runtime.fruitTreeFlowStartedAt = 0;
+      runtime.nextFruitTreeFlowAt = currentTime;
+      runtime.fruitTreeFlowState = "Sẵn sàng";
+    }
+
+    if (!runtime.settings.autoHoney) {
+      runtime.honeyFlowStartedAt = 0;
+      runtime.nextHoneyFlowAt = currentTime;
+      runtime.honeyFlowState = "Tạm tắt";
+      runtime.honeyFlowResumeAt = 0;
+    } else if (honeyToggledOn) {
+      runtime.honeyFlowStartedAt = 0;
+      runtime.nextHoneyFlowAt = currentTime;
+      runtime.honeyFlowState = "Sẵn sàng";
     }
 
     if (!cookNowOn) {

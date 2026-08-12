@@ -22,6 +22,23 @@
     return did;
   }
 
+  function shouldYieldMineToCrop(sched) {
+    if (!runtime.settings.autoFarmCropsDom || typeof S.cropDom?.tryOneFarmStep !== "function") return false;
+    const t = S.time.now();
+    if (runtime.cropFlowResumeAt && t >= runtime.cropFlowResumeAt) return true;
+    if (!sched || typeof sched.computeCropRestSchedule !== "function") return false;
+    try {
+      const cropRest = sched.computeCropRestSchedule();
+      return !!(
+        cropRest?.hasReadyCrops ||
+        cropRest?.hasEmptyPlots ||
+        (Number(cropRest?.nextAt) > 0 && Number(cropRest.nextAt) <= t)
+      );
+    } catch (_error) {
+      return false;
+    }
+  }
+
   function visibleUpdateButtonIn(root) {
     if (!root) return null;
     let els;
@@ -111,8 +128,47 @@
     return false;
   }
 
+  async function runResetPurchaseFlow() {
+    runtime.busy = true;
+    try {
+      S.time.logFlow("Reset Purchase: Bắt đầu luồng mua đồ tự động 12h...", {});
+      
+      // 1. Mua tất cả công cụ (Axe + Pickaxes) bằng Batch Buy
+      if (typeof S.workbench?.buyAllToolsBatch === "function") {
+        await S.workbench.buyAllToolsBatch();
+      } else {
+        S.time.logFlow("Reset Purchase: Không thấy hàm S.workbench.buyAllToolsBatch", {});
+      }
+      
+      // 2. Mua tất cả hạt giống mùa hiện tại bằng event
+      if (typeof S.cropDom?.buyAllPossibleSeedsViaEvent === "function") {
+        await S.cropDom.buyAllPossibleSeedsViaEvent();
+      } else {
+        S.time.logFlow("Reset Purchase: Không thấy hàm S.cropDom.buyAllPossibleSeedsViaEvent", {});
+      }
+      
+      S.time.logFlow("Reset Purchase: Đã hoàn thành toàn bộ luồng mua đồ 12h!", {});
+      try {
+        localStorage.setItem("sfl_run_reset_purchase_flow", "false");
+      } catch (e) {}
+    } catch (e) {
+      console.error("[Reset Purchase] Error:", e);
+      S.time.logFlow("Reset Purchase: Lỗi khi chạy luồng mua đồ 12h: " + e.message, {});
+    } finally {
+      runtime.busy = false;
+    }
+  }
+
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
+
+    // ── Kích hoạt luồng mua đồ 12h nếu cờ được set ──
+    try {
+      if (localStorage.getItem("sfl_run_reset_purchase_flow") === "true") {
+        await runResetPurchaseFlow();
+        return;
+      }
+    } catch (e) { /* ignore */ }
     if (typeof S.pullAutomationFlagsFromStorage === "function") {
       await S.pullAutomationFlagsFromStorage();
     }
@@ -129,6 +185,8 @@
         runtime.mushroomFlowState = "Tạm dừng (rời farm)";
         runtime.cookFlowState = "Tạm dừng (rời farm)";
         runtime.petalHarvestState = "Tạm dừng (rời farm)";
+        runtime.fruitTreeFlowState = "Tạm dừng (rời farm)";
+        runtime.honeyFlowState = "Tạm dừng (rời farm)";
         S.time.logFlow("Route watcher: rời farm route — dừng tất cả luồng", {
           href: String(window.location.href || "").slice(0, 80),
         });
@@ -147,6 +205,9 @@
       runtime.rockFlowResumeAt = 0;
       runtime.cropFlowResumeAt = 0;
       runtime.petalFlowResumeAt = 0;
+      runtime.fruitTreeFlowResumeAt = 0;
+      runtime.lastFruitTreeActionAt = 0;
+      runtime.honeyFlowResumeAt = 0;
       S.time.logFlow("Route watcher: trở về farm route — bắt đầu lại vòng lặp", {
         href: String(window.location.href || "").slice(0, 80),
       });
@@ -350,6 +411,14 @@
             
             for (let step = 0; step < 40; step += 1) {
               let didStep = false;
+              // Captcha có thể xuất hiện ngay sau cú chặt — kiểm tra mỗi bước.
+              if (typeof S.cropDom?.tryTapChestCaptchaIfPresent === "function") {
+                const capDone = await S.cropDom.tryTapChestCaptchaIfPresent();
+                if (capDone) {
+                  await S.time.sleep(S.time.rand(200, 420));
+                  didStep = true;
+                }
+              }
               const bought = await drainBuyToolQueue();
               didStep = didStep || bought;
               const didChop = await S.woodChop.tryAutoChop();
@@ -412,6 +481,12 @@
         }
         else if (runtime.currentSequenceStep === "mine") {
           if (runtime.settings.autoMine) {
+            if (shouldYieldMineToCrop(sched)) {
+              runtime.rockFlowState = "Nhuong luong ruong";
+              runtime.currentSequenceStep = "crop";
+              checkedCount += 1;
+              continue;
+            }
             // ── Kiểm tra xem luồng đá có đang nghỉ không ──
             if (runtime.rockFlowResumeAt && S.time.now() < runtime.rockFlowResumeAt) {
               const leftMs = runtime.rockFlowResumeAt - S.time.now();
@@ -423,7 +498,13 @@
             runtime.rockFlowResumeAt = 0;
             runtime.rockFlowState = "Đang chạy";
             let rockSteps = 0;
+            let yieldedToCrop = false;
             for (let step = 0; step < 40; step += 1) {
+              if (shouldYieldMineToCrop(sched)) {
+                yieldedToCrop = true;
+                runtime.rockFlowState = "Nhuong luong ruong";
+                break;
+              }
               let didStep = false;
               const bought = await drainBuyToolQueue();
               didStep = didStep || bought;
@@ -431,14 +512,13 @@
               didStep = didStep || didMine;
               
               if (!didMine && runtime.lastAction === "mine_gap") {
-                didStep = true;
                 await S.time.sleep(S.time.rand(420, 780));
               }
               didWork = didWork || didStep;
               rockSteps = step + 1;
               if (!didStep) break;
             }
-            if (didWork) {
+            if (didWork && !yieldedToCrop) {
               runtime.lastRockActionAt = S.time.now();
               runtime.lastActionAt = runtime.lastRockActionAt;
               S.time.logFlow("Luồng đá: đã đào", { steps: rockSteps });
@@ -452,7 +532,7 @@
                   S.time.logFlow("⛏️ Luồng đá: nghỉ thông minh", { reason: rockRest.reason, resumeIn: waitLabel, readyByKind: rockRest.readyByKind });
                 }
               }
-            } else {
+            } else if (!yieldedToCrop) {
               if (sched) {
                 const rockRest = sched.computeRockRestSchedule();
                 if (!rockRest.allReady && rockRest.nextAt > S.time.now()) {
@@ -465,6 +545,9 @@
               } else {
                 runtime.rockFlowState = "Chờ tới lượt";
               }
+            }
+            if (yieldedToCrop) {
+              runtime.currentSequenceStep = "crop";
             }
           } else {
             runtime.rockFlowState = "Tạm tắt";
@@ -536,6 +619,61 @@
           } else {
             runtime.petalHarvestState = "Tạm tắt";
           }
+          if (!didWork) runtime.currentSequenceStep = "fruitTree";
+        }
+        else if (runtime.currentSequenceStep === "fruitTree") {
+          if (runtime.settings.autoFruitTree && typeof S.fruitTree?.runFruitTreeCycle === "function") {
+            // ── Kiểm tra xem luồng cây ăn quả có đang nghỉ không ──
+            if (runtime.fruitTreeFlowResumeAt && S.time.now() < runtime.fruitTreeFlowResumeAt) {
+              const leftMs = runtime.fruitTreeFlowResumeAt - S.time.now();
+              runtime.fruitTreeFlowState = `Nghỉ — cây chín sau ${sched.formatDuration(leftMs)}`;
+              runtime.currentSequenceStep = "cook";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.fruitTreeFlowResumeAt = 0;
+            runtime.fruitTreeFlowState = "Đang chạy";
+            try {
+              const didF = await S.fruitTree.runFruitTreeCycle();
+              if (didF) {
+                didWork = true;
+                runtime.lastFruitTreeActionAt = S.time.now();
+                runtime.fruitTreeFlowStartedAt = runtime.fruitTreeFlowStartedAt || S.time.now();
+                runtime.nextFruitTreeFlowAt = S.time.now() + S.FRUIT_TREE_FLOW_INTERVAL_MS;
+              } else {
+                runtime.fruitTreeFlowState = "Chờ tới lượt";
+              }
+            } catch (_ftErr) {
+              runtime.fruitTreeFlowState = "Lỗi";
+            }
+          } else {
+            runtime.fruitTreeFlowState = "Tạm tắt";
+          }
+          if (!didWork) runtime.currentSequenceStep = "honey";
+        }
+        else if (runtime.currentSequenceStep === "honey") {
+          if (runtime.settings.autoHoney && typeof S.honey?.runHoneyCycle === "function") {
+            // ── Kiểm tra xem luồng mật ong có đang nghỉ không ──
+            if (runtime.honeyFlowResumeAt && S.time.now() < runtime.honeyFlowResumeAt) {
+              runtime.currentSequenceStep = "cook";
+              checkedCount += 1;
+              continue;
+            }
+            runtime.honeyFlowResumeAt = 0;
+            runtime.honeyFlowState = "Đang chạy";
+            try {
+              const didH = await S.honey.runHoneyCycle();
+              if (didH) {
+                didWork = true;
+                runtime.honeyFlowStartedAt = runtime.honeyFlowStartedAt || S.time.now();
+              }
+              // honeyFlowState & nextHoneyFlowAt được cập nhật bửi runHoneyCycle() trong honey.js
+            } catch (_hErr) {
+              runtime.honeyFlowState = "Lỗi";
+            }
+          } else {
+            runtime.honeyFlowState = "Tạm tắt";
+          }
           if (!didWork) runtime.currentSequenceStep = "cook";
         }
         else if (runtime.currentSequenceStep === "cook") {
@@ -552,6 +690,16 @@
               continue;
             }
             try {
+              // Captcha có thể chặn màn hình nấu — giải trước khi chạy chu kỳ nấu.
+              if (typeof S.cropDom?.tryTapChestCaptchaIfPresent === "function") {
+                const capDone = await S.cropDom.tryTapChestCaptchaIfPresent();
+                if (capDone) {
+                  await S.time.sleep(S.time.rand(200, 420));
+                  didWork = true;
+                  runtime.currentSequenceStep = "mushroom";
+                  break;
+                }
+              }
               runtime.cookFlowState = "Đang chạy";
               const cookActed = !!(await S.cook.runCookCycle());
               if (cookActed) {
@@ -589,6 +737,8 @@
       if (runtime.settings.autoHarvestMushrooms) runtime.mushroomFlowState = "Lỗi";
       if (S.cook?.isCookEnabled?.()) runtime.cookFlowState = "Lỗi";
       if (runtime.settings.autoPetalHarvestDom) runtime.petalHarvestState = "Lỗi";
+      if (runtime.settings.autoFruitTree) runtime.fruitTreeFlowState = "Lỗi";
+      if (runtime.settings.autoHoney) runtime.honeyFlowState = "Lỗi";
       S.time.logFlow("Lỗi luồng", {
         lastError: runtime.lastError,
         errorCount: runtime.errorCount,
@@ -608,26 +758,46 @@
     }, Math.max(400, runtime.settings.tickMs));
   }
 
-  // --- HEARTBEAT ---
+  // --- HEARTBEAT & 12H SCHEDULER RESETS ---
   const HEARTBEAT_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
   let heartbeatStartTime = S.time.now();
 
-  function getNext7AM() {
+  function getNextResetTime() {
     const now = new Date();
-    const target = new Date(now);
-    target.setHours(7, 0, 0, 0);
-    if (now.getTime() >= target.getTime()) {
-      target.setDate(target.getDate() + 1);
+    
+    const t7am = new Date(now);
+    t7am.setHours(7, 0, 0, 0);
+    
+    const t7pm = new Date(now);
+    t7pm.setHours(19, 0, 0, 0);
+    
+    const times = [t7am.getTime(), t7pm.getTime()];
+    times.sort((a, b) => a - b);
+    
+    for (const t of times) {
+      if (t > now.getTime()) {
+        return t;
+      }
     }
-    return target.getTime();
+    
+    // Nếu cả 2 mốc hôm nay đều đã qua, mốc tiếp theo là 7h sáng ngày mai
+    const nextDay7am = new Date(now);
+    nextDay7am.setDate(nextDay7am.getDate() + 1);
+    nextDay7am.setHours(7, 0, 0, 0);
+    return nextDay7am.getTime();
   }
-  let nextReloadTime = getNext7AM();
+  let nextReloadTime = getNextResetTime();
 
   function triggerHeartbeat() {
     const t = S.time.now();
     if (t >= nextReloadTime) {
-      S.time.logFlow("Heartbeat: Đã đến 7h sáng, tiến hành reload trang", {});
-      console.log("[Heartbeat] Đã đến 7h sáng, tiến hành reload trang...");
+      S.time.logFlow("Heartbeat: Đã đến giờ reset (7h sáng / 19h tối), tiến hành reload trang và chạy mua đồ tự động", {});
+      console.log("[Heartbeat] Đã đến giờ reset, reload trang...");
+      try {
+        localStorage.setItem("sfl_run_reset_purchase_flow", "true");
+      } catch (e) {
+        // ignore
+      }
       window.location.reload();
       return;
     }
@@ -647,6 +817,8 @@
     runtime.rockFlowResumeAt = 0;
     runtime.cropFlowResumeAt = 0;
     runtime.petalFlowResumeAt = 0;
+    runtime.fruitTreeFlowResumeAt = 0;
+    runtime.honeyFlowResumeAt = 0;
 
     // Force reset state in case it hangs
     runtime.busy = false;

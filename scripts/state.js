@@ -68,6 +68,17 @@
     cropFlowResumeAt: 0,
     cropFlowState: "Tạm tắt",
     petalFlowResumeAt: 0,
+    /** Thời điểm chạy tới của luồng cây ăn quả. */
+    nextFruitTreeFlowAt: 0,
+    fruitTreeFlowStartedAt: 0,
+    fruitTreeFlowState: "Tạm tắt",
+    lastFruitTreeActionAt: 0,
+    fruitTreeFlowResumeAt: 0,
+    /** Thời điểm chạy tới của luồng tổ ong mật. */
+    nextHoneyFlowAt: 0,
+    honeyFlowStartedAt: 0,
+    honeyFlowState: "Tạm tắt",
+    honeyFlowResumeAt: 0,
     /** Đồng bộ từ storage: số lần tải lại để thoát captcha Goblin/Moon. */
     captchaGoblinMoonReloadSkipCount: 0,
     /** Số lần giải captcha Goblin/Moon thành công. */

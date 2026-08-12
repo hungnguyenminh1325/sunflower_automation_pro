@@ -12,7 +12,7 @@ Chrome extension (Manifest V3) for **Sunflower Land**: automates **tools** via *
 - **Mine rocks / ore** — hybrid bridge + DOM; pickaxe tiers; per-ore toggles (Stone, Iron, Gold, Crimstone, Sunstone).
 - **Buy tools (axe + pickaxes)** — Blacksmith / Workbench queue, craft, Restock handling, cooldowns, “insufficient resources” per-tool blocking so mining can try another tier.
 - **Automation scheduling** — chop before mine: defer mining when a chop session is pending; short `nextTreeFlowAt` when trees remain; buy-tool queue drained with priority rules.
-- **Farm (crops, DOM)** — optional bridge-assisted plant/harvest; **“Mua hạt tại Betty”** defaults **off** (`cropDomBuySeedsAtBetty`): only sow seeds already in inventory; when off, no Market/Buy-1 seed purchases. If buy is off, there are empty plots, no seeds in stock, and nothing ready to harvest, the farm step skips that tick (avoids useless UI work).
+- **Farm (crops, DOM)** — bridge-assisted plant/harvest; **“Mua hạt tại Betty”** defaults **on** (`cropDomBuySeedsAtBetty`): when seeds run out, the bot can open Betty and use Buy 1. Turn it off for inventory-only sowing.
 
 ### Project layout
 
@@ -53,7 +53,7 @@ Tiện ích Chrome (MV3) cho **Sunflower Land**: tự động **công cụ** b�
 - **Đào đá / quặng** — kết hợp bridge + DOM; cuốc theo tier; bật/tắt từng loại quặng.
 - **Mua công cụ** — hàng chờ Blacksmith, craft, Restock (tùy cài đặt), cooldown; thiếu nguyên liệu craft **chặn theo từng tool** để thử tier/quặng khác.
 - **Lịch automation** — **ưu tiên cây trước đá**: hoãn đào khi còn phiên chặt dở (`chopStickyTile`); lên lịch cây sớm khi vẫn còn cây trên map.
-- **Ruộng (DOM)** — tùy chọn thu + gieo + (nếu bật) mua hạt Betty. **Mặc định tắt mua hạt**: chỉ gieo hạt có trong kho; hết hạt thì chỉ thu; còn ô trống mà không hạt, không cây thu → bỏ qua tick ruộng (giảm quét vô ích).
+- **Ruộng (DOM)** — thu + gieo + mua hạt Betty. **Mặc định bật mua hạt**: hết hạt thì bot có thể mở Betty và Buy 1. Tắt mua nếu chỉ muốn gieo hạt có trong kho.
 
 ### Cấu trúc thư mục
 
@@ -79,4 +79,4 @@ Giống mục **Run** (tiếng Anh): load unpacked, vào game, bật **Master** 
 | Craft disabled / insufficient resources → per-tool cooldown; mine can pivot to another pickaxe/ore. | Thiếu nguyên liệu craft → chặn theo tool; đào có thể chuyển tier/quặng. |
 | After chop progress, tree flow reschedules soon if trees remain; idle retries inside the tree step loop. | Sau khi chặt có tiến độ, lên lịch cây sớm nếu còn cây; retry trong vòng bước. |
 | Bridge still shows axe but tree not down → extra strikes + `return true` to keep the tree flow alive. | Bridge còn rìu mà cây chưa đổ → strike thêm và `return true` để không tắt luồng cây. |
-| Crop DOM: `cropDomBuySeedsAtBetty` defaults **false** — inventory-only sowing; no Betty seed shop when off; idle skip when empty plots + no seeds + no harvest targets. | Ruộng DOM: `cropDomBuySeedsAtBetty` mặc định **tắt** — chỉ gieo từ kho; không mở Betty khi tắt; bỏ qua tick khi còn ô trống, hết hạt, không có cây thu. |
+| Crop DOM: `cropDomBuySeedsAtBetty` defaults **true** — Betty Buy 1 can run when seeds run out; turn it off for inventory-only sowing. | Ruộng DOM: `cropDomBuySeedsAtBetty` mặc định **bật** — hết hạt có thể mua Betty Buy 1; tắt nếu chỉ muốn gieo từ kho. |

@@ -40,6 +40,8 @@
         "scripts/flows/cook.js",
         "scripts/flows/crop-dom.js",
         "scripts/flows/petal-collect-dom.js",
+        "scripts/flows/fruit-tree.js",
+        "scripts/flows/honey.js",
         "scripts/automation.js",
         "scripts/bootstrap.js"
       ],

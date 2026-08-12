@@ -15,7 +15,7 @@
           <p class="hero-text">v1.0.0 — UI-first automation for Sunflower Land: chop, mine, farm, workbench, and related flows.</p>
         </div>
         <label class="power-switch" aria-label="Bật hoặc tắt toàn bộ">
-          <input id="masterEnabled" type="checkbox" />
+          <input id="masterEnabled" type="checkbox" checked />
           <span class="power-track">
             <span class="power-label power-off">OFF</span>
             <span class="power-thumb"></span>
@@ -61,7 +61,7 @@
             <small>Ưu tiên vòng lặp thu hoạch tài nguyên gỗ.</small>
           </span>
           <span class="toggle">
-            <input id="autoChop" type="checkbox" />
+            <input id="autoChop" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -72,7 +72,7 @@
             <small>Tap đá đủ nhịp (thường 3) là khai thác xong. Hết cuốc: cần bật «Tự mua công cụ» ở trên để vào Workbench craft pickaxe.</small>
           </span>
           <span class="toggle">
-            <input id="autoMine" type="checkbox" />
+            <input id="autoMine" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -114,16 +114,26 @@
 
         <label class="setting-row">
           <span class="setting-copy">
-            <strong>Hoa / cây quả / mật ong (DOM)</strong>
-            <small
-              >Thu khi thanh tiến độ (empty_bar + màu xanh/cam) gần đầy; tổ ong: bấm nhà → Collect. Bỏ qua hoa còn
-              sprout/bud. Dùng chung khoảng cách thao tác (action gap) với ruộng.</small>
+            <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
+            <small>Tìm trái chín (thanh tiến độ đầy), chặt gốc cây già (stump), trồng cây mới khi có sapling trong túi. Luồng riêng: chạy mỗi ~1 phút (không cần action gap với cây/đá).</small>
           </span>
           <span class="toggle">
-            <input id="autoPetalHarvestDom" type="checkbox" />
+            <input id="autoFruitTree" type="checkbox" />
             <span class="toggle-ui"></span>
           </span>
         </label>
+
+        <label class="setting-row">
+          <span class="setting-copy">
+            <strong>Thu hoạch hoa, mật ong (DOM + Bridge)</strong>
+            <small>Click Beehive khi mật đầy (produced ≥ 100). Dùng Bridge để biết tổ ong nào sẵn sàng, fallback quét DOM. Chạy mỗi ~5 phút.</small>
+          </span>
+          <span class="toggle">
+            <input id="autoHoney" type="checkbox" />
+            <span class="toggle-ui"></span>
+          </span>
+        </label>
+
 
         <label class="setting-row">
           <span class="setting-copy">
@@ -133,7 +143,7 @@
               Cách nhau ~35 giây để tránh lặp vô hạn. Có thể mất bước chưa lưu — chỉ bật khi làm tay cũng không xong.</small>
           </span>
           <span class="toggle">
-            <input id="reloadPageOnGoblinMoonCaptcha" type="checkbox" />
+            <input id="reloadPageOnGoblinMoonCaptcha" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -155,14 +165,14 @@
             <small>Bridge còn ô trống: ưu tiên gieo. Mua tại Betty (bật tùy chọn bên dưới): mở Market «Buy 1» khi hết hạt trong túi. Tắt mua: chỉ dùng hạt trong kho — hết hạt thì chỉ thu; không còn gì để thu thì bỏ qua tick ruộng. Khi hết ô trống: thu (plant.png) trước. Tên hạt đúng game (vd. Sunflower Seed). Cần bridge.</small>
           </span>
           <span class="toggle">
-            <input id="autoFarmCropsDom" type="checkbox" />
+            <input id="autoFarmCropsDom" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
         <div class="strike-grid" style="margin: -8px 0 12px">
           <label class="strike-field">
             <span>Tên hạt</span>
-            <input id="cropDomSeedName" type="text" maxlength="80" spellcheck="false" value="Sunflower Seed" />
+            <input id="cropDomSeedName" type="text" maxlength="80" spellcheck="false" placeholder="Trống = Auto (theo mùa)" />
           </label>
         </div>
         <label class="setting-row">
@@ -171,17 +181,17 @@
             <small>Bật: thứ tự mua/gieo xếp theo thời gian lớn <em>cơ bản</em> trong game (ngắn trước, dài sau). Không loại hẳn hạt lâu — trên ruộng cây vẫn có thể chín sớm hơn nhờ buff, phân, v.v.</small>
           </span>
           <span class="toggle">
-            <input id="cropDomSkipLongGrow" type="checkbox" />
+            <input id="cropDomSkipLongGrow" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Mua hạt tại Betty (Market)</strong>
-            <small>Tắt (mặc định): không mở shop mua hạt — chỉ gieo khi còn hạt trong kho. Bật: khi hết hạt trong túi, bot mở Betty và mua «Buy 1» như trước.</small>
+            <small>Bật mặc định: khi hết hạt trong túi, bot mở Betty và mua «Buy 1». Tắt: không mở shop mua hạt — chỉ gieo khi còn hạt trong kho.</small>
           </span>
           <span class="toggle">
-            <input id="cropDomBuySeedsAtBetty" type="checkbox" />
+            <input id="cropDomBuySeedsAtBetty" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -192,7 +202,7 @@
             <small>Mỗi 2 giờ quét một lần: tap nấm trong tầm nhìn (theo loại bạn bật bên dưới). Luồng riêng: không chờ action gap với cây/đá, tới giờ là chạy ngay đầu tick. Không cần tool.</small>
           </span>
           <span class="toggle">
-            <input id="autoHarvestMushrooms" type="checkbox" />
+            <input id="autoHarvestMushrooms" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -232,7 +242,7 @@
             <span>Crimstone</span>
           </label>
           <label class="mine-chip">
-            <input id="mineTargetSunstone" type="checkbox" checked />
+            <input id="mineTargetSunstone" type="checkbox" />
             <span>Sunstone</span>
           </label>
         </div>
@@ -256,7 +266,7 @@
             <small>Một lần cho cả cây.</small>
           </span>
           <span class="toggle">
-            <input id="strikeLearnAutoChop" type="checkbox" />
+            <input id="strikeLearnAutoChop" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -276,7 +286,7 @@
             <small>Một lần cho mỗi ô đá (giống cây).</small>
           </span>
           <span class="toggle">
-            <input id="strikeLearnAutoMine" type="checkbox" />
+            <input id="strikeLearnAutoMine" type="checkbox" checked />
             <span class="toggle-ui"></span>
           </span>
         </label>
@@ -360,19 +370,35 @@
           </div>
           <div class="flow-card">
             <div class="flow-head">
-              <strong id="petalFlowName">Luồng hoa / quả / ong</strong>
-              <span id="petalFlowState" class="flow-state">--</span>
+              <strong id="fruitTreeFlowName">Luồng trồng + thu hoạch cây ăn quả</strong>
+              <span id="fruitTreeFlowState" class="flow-state">--</span>
             </div>
             <div class="flow-meta">
-              <span>Bắt đầu: <b id="petalFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="petalFlowNext">--</b></span>
+              <span>Bắt đầu: <b id="fruitTreeFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="fruitTreeFlowNext">--</b></span>
             </div>
             <div class="flow-progress-track">
-              <div id="petalFlowProgress" class="flow-progress-fill"></div>
+              <div id="fruitTreeFlowProgress" class="flow-progress-fill"></div>
             </div>
-            <div id="petalFlowPercent" class="flow-percent">0%</div>
-            <div id="petalFlowQueue" class="flow-queue">—</div>
+            <div id="fruitTreeFlowPercent" class="flow-percent">0%</div>
+            <div id="fruitTreeFlowQueue" class="flow-queue">—</div>
           </div>
+          <div class="flow-card">
+            <div class="flow-head">
+              <strong id="honeyFlowName">Luồng thu hoạch hoa, mật ong</strong>
+              <span id="honeyFlowState" class="flow-state">--</span>
+            </div>
+            <div class="flow-meta">
+              <span>Bắt đầu: <b id="honeyFlowStart">--</b></span>
+              <span>Kế tiếp: <b id="honeyFlowNext">--</b></span>
+            </div>
+            <div class="flow-progress-track">
+              <div id="honeyFlowProgress" class="flow-progress-fill"></div>
+            </div>
+            <div id="honeyFlowPercent" class="flow-percent">0%</div>
+            <div id="honeyFlowQueue" class="flow-queue">—</div>
+          </div>
+
         </div>
 
         <p id="statusText" class="status-note">Đang tải dữ liệu từ tab game...</p>

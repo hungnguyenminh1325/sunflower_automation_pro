@@ -426,7 +426,7 @@
    * Nếu đúng → KHÔNG được gieo hạt ruộng vào ô này.
    */
   const FRUIT_PATCH_IMG_RE = /orange|apple|blueberry|lemon|pear|plum|grape|banana|tomato|peach|cherry|mango|durian|olive/i;
-  const FRUIT_PATCH_SRC_RE = /\/fruit[_\-]?patch|\/fruit\/|fruit_patch|fruitPatch/i;
+  const FRUIT_PATCH_SRC_RE = /\/fruit[_\-]?patch|\/fruit[_\-]?patches|\/fruit\/|fruit_patch|fruitPatch|fruit-patch|fruitpatch/i;
 
   function normalizePlotKindName(value) {
     return String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
@@ -456,9 +456,94 @@
     );
   }
 
+  function cropPlotFiberVerdict(el) {
+    if (!el) return "unknown";
+    let fiberKey;
+    try {
+      fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber"));
+    } catch (_e) {
+      return "unknown";
+    }
+    if (!fiberKey) return "unknown";
+
+    let f = el[fiberKey];
+    for (let depth = 0; depth < 72 && f; depth += 1) {
+      const componentName = fiberDisplayName(f);
+      if (isNonCropPlotKindName(componentName)) return "non_crop";
+      if (isCropPlotKindName(componentName)) return "crop";
+
+      const sources = [f.memoizedProps, f.pendingProps];
+      for (let si = 0; si < sources.length; si += 1) {
+        const p = sources[si];
+        if (!p || typeof p !== "object") continue;
+        const name = String(p.name || "").trim();
+        if (isNonCropPlotKindName(name)) return "non_crop";
+        if (isCropPlotKindName(name)) return "crop";
+      }
+      f = f.return;
+    }
+    return "unknown";
+  }
+
+  function hasCropPlotFiberContext(el) {
+    return cropPlotFiberVerdict(el) === "crop";
+  }
+
   function fiberDisplayName(fiber) {
     const t = fiber?.elementType || fiber?.type;
     return String(t?.displayName || t?.name || "");
+  }
+
+  function rectCenter(rect) {
+    return {
+      x: Number(rect?.left || 0) + Number(rect?.width || 0) / 2,
+      y: Number(rect?.top || 0) + Number(rect?.height || 0) / 2,
+    };
+  }
+
+  function elementCenterDistance(a, b) {
+    if (!a || !b) return Number.MAX_SAFE_INTEGER;
+    let ar;
+    let br;
+    try {
+      ar = a.getBoundingClientRect();
+      br = b.getBoundingClientRect();
+    } catch (_e) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    if (!ar || !br || ar.width <= 0 || ar.height <= 0 || br.width <= 0 || br.height <= 0) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    const ac = rectCenter(ar);
+    const bc = rectCenter(br);
+    return Math.hypot(ac.x - bc.x, ac.y - bc.y);
+  }
+
+  function hasNearbyFruitPatchImage(el) {
+    if (!el) return false;
+    let rect;
+    try {
+      rect = el.getBoundingClientRect();
+    } catch (_e) {
+      return false;
+    }
+    if (!rect || rect.width <= 0 || rect.height <= 0) return false;
+    const maxDistance = Math.max(22, Math.min(rect.width, rect.height) * 0.6);
+    const doc = el.ownerDocument || document;
+    let imgs;
+    try {
+      imgs = doc.querySelectorAll("img[src], img[srcset]");
+    } catch (_e) {
+      return false;
+    }
+    for (let i = 0; i < imgs.length; i += 1) {
+      const img = imgs[i];
+      const src = imgAssetUrl(img);
+      if (!FRUIT_PATCH_SRC_RE.test(src)) continue;
+      if (!d.isVisible(img)) continue;
+      if (elementCenterDistance(el, img) <= maxDistance) return true;
+    }
+    return false;
   }
 
   function isFruitPatchOrFlowerElement(el) {
@@ -498,6 +583,7 @@
     }
     if (html.includes("/flowers/") || html.includes("flowers/")) return true;
     if (FRUIT_PATCH_SRC_RE.test(html)) return true;
+    if (hasNearbyFruitPatchImage(el)) return true;
 
     let imgs;
     try {
@@ -921,6 +1007,7 @@
           }
           continue;
         }
+        if (!isSafeUnkeyedCropSoilRoot(root)) continue;
         if (seenF.has(root)) continue;
         seenF.add(root);
         fallback.push({ root, dist: d.centerDistance(root) });
@@ -979,6 +1066,7 @@
           }
           continue;
         }
+        if (!isSafeUnkeyedCropSoilRoot(root)) continue;
         if (seenF.has(root)) continue;
         seenF.add(root);
         fallback.push({ root, dist: d.centerDistance(root) });
@@ -1538,18 +1626,30 @@
             continue;
           }
         }
+        // Check 1: có img hạt crop trong row (kiểm tra chính)
+        let hasSeedImg = false;
         try {
-          if (
-            !row.querySelector(
-              'img[src*="/crops/"][src*="seed"],img[src*="/crops/"][src*="crop"],img[src*="/crops/"]',
-            )
-          ) {
-            continue;
-          }
+          hasSeedImg = !!row.querySelector(
+            'img[src*="/crops/"][src*="seed"],img[src*="/crops/"][src*="crop"],img[src*="/crops/"]',
+          );
         } catch (_e2) {
-          continue;
+          // ignore
         }
-        return true;
+        if (hasSeedImg) return true;
+        // Check 2 (fallback): row có đủ ô nâu (bg-brown) — QuickSelect inventory
+        // Tránh nhầm với UI nhỏ (workbench slot đơn lẻ), yêu cầu >= 3 ô nâu
+        try {
+          const brownSlots = row.querySelectorAll(".bg-brown-600,.bg-brown-400,.bg-brown-300");
+          if (brownSlots.length >= 3) {
+            // Đảm bảo đây không phải shop Betty
+            const nearestDlg = row.closest('[role="dialog"]');
+            if (!nearestDlg || !dialogIsBettyMarketSeedShop(nearestDlg)) {
+              return true;
+            }
+          }
+        } catch (_e3) {
+          // ignore
+        }
       }
     }
     return false;
@@ -1768,17 +1868,26 @@
     }
 
     // ── Smart cache ──
-    // Khi có cache (đã chọn hạt trước đó):
-    //   - Tin cache, return ngay (không mở UI lại) — kể cả khi luồng khác đã chạy xen kẽ.
-    //   - Inventory mở → đóng lại, tin cache (không re-select, tránh spam).
-    // Cache chỉ bị xóa khi: đổi mùa (tryOneFarmStep reset), dialog "Wrong seed",
-    //   hoặc tên hạt gieo thay đổi (seedName khác cache).
+    // Inventory đóng + cache khớp → tin cache, không mở lại (tránh nhảy nhảy inventory mọi lần gieo).
+    // Inventory mở → verify selectbox nhanh rồi đóng.
+    // Cache bị xóa khi: thu hoạch (tryHarvestOne), dialog "Wrong seed", đổi mùa, đổi loại hạt.
     if (runtime.cropDomLastSelectedSeedName === seedName) {
       if (isInventorySeedStripVisible()) {
-        // User mở giỏ thủ công hoặc giỏ chưa đóng → đóng lại, tin cache
-        await closeInventorySeedStripIfOpen();
+        // Inventory đang mở (user mở thủ công, hoặc chưa đóng kịp) → verify nhanh rồi đóng
+        await sleep(rand(80, 140));
+        if (!inventorySeedSlugAppearsSelected(slug)) {
+          // Selectbox không thấy → xóa cache, chọn lại
+          logFlow("Ruộng DOM: cache hạt — inventory mở nhưng không thấy selectbox — chọn lại", { seedName });
+          runtime.cropDomLastSelectedSeedName = null;
+          // Thực hiện chọn lại bên dưới
+        } else {
+          await closeInventorySeedStripIfOpen();
+          return true;
+        }
+      } else {
+        // Inventory đóng → tin cache (hạt đang cầm), không mở lại
+        return true;
       }
-      return true;
     }
 
     // ── Mở inventory nếu chưa mở (cần thấy selectbox để verify) ──
@@ -1786,19 +1895,20 @@
       const basketEl = findBasketButtonClickTarget();
       if (basketEl) {
         d.nativeClickClose(basketEl) || d.click(basketEl);
-        for (let wait = 0; wait < 15; wait += 1) {
+        // Chờ tối đa 3 giây để inventory render — tăng từ 15×200ms lên 20×200ms + thêm delay cuối
+        for (let wait = 0; wait < 20; wait += 1) {
           await sleep(200);
           if (isInventorySeedStripVisible()) break;
         }
-        await sleep(rand(200, 400));
+        // Đợi thêm để UI ổn định dù chưa thấy seed strip (kho có thể mở nhưng chưa render img kịp)
+        await sleep(rand(300, 500));
       } else {
         logThrottled("crop_dom_no_basket", 10000, "Ruộng DOM: Không tìm thấy nút giỏ đồ (inventory) trên màn hình");
       }
     }
 
     // ── Kiểm tra hạt đã được chọn (selectbox highlight) ──
-    // Kể cả trường hợp người dùng click cuốc/item khác: selectbox sẽ ở item đó, không ở hạt.
-    await sleep(rand(120, 220));
+    await sleep(rand(100, 200));
     if (inventorySeedSlugAppearsSelected(slug)) {
       logFlow("Ruộng DOM: hạt đã được chọn (verify qua selectbox)", { seedName });
       runtime.cropDomLastSelectedSeedName = seedName;
@@ -1807,9 +1917,7 @@
     }
 
     // ── Chưa chọn hoặc item khác đang chọn → tìm và click hạt ──
-    if (runtime.cropDomLastSelectedSeedName !== seedName) {
-      logFlow("Ruộng DOM: chọn lại hạt giống (item khác đang active hoặc chưa chọn)", { seedName });
-    }
+    logFlow("Ruộng DOM: chọn lại hạt giống (item khác đang active hoặc chưa chọn)", { seedName });
     runtime.cropDomLastSelectedSeedName = null;
 
     // Tìm ô hạt trong inventory strip
@@ -1820,44 +1928,64 @@
       if (targetSeedImg) break;
     }
 
-    let seedSelected = false;
-    if (targetSeedImg) {
-      const brown = findCropInventoryBrownSlot(targetSeedImg);
-      if (brown && d.isVisible(brown)) {
-        await clickCropInventoryBrownOnce(brown);
-      } else {
-        clickSeedImageRoot(targetSeedImg);
-        await sleep(rand(280, 420));
+    if (!targetSeedImg) {
+      // ── Retry: đợi thêm để inventory UI render hoàn toàn rồi tìm lại ──
+      // Trường hợp thường gặp: mở kho, UI chưa kịp render hạt vào DOM → tìm ngay sẽ trả null
+      await sleep(rand(300, 500));
+      for (let di = 0; di < docs.length; di += 1) {
+        targetSeedImg = findInventorySelectableSeedImg(docs[di], slug);
+        if (targetSeedImg) break;
       }
+    }
 
-      // Chờ game cập nhật sau click
-      await sleep(rand(420, 760));
-      if (inventorySeedSlugAppearsSelected(slug)) {
-        logFlow("Ruộng DOM: đã chọn hạt", { seedName });
-        seedSelected = true;
-      } else {
-        // Fallback: bấm lại vào ô seed để đảm bảo chọn
-        clickSeedImageRoot(targetSeedImg);
-        await sleep(rand(420, 760));
-        if (inventorySeedSlugAppearsSelected(slug)) {
-          logFlow("Ruộng DOM: đã chọn hạt sau click fallback", { seedName });
-          seedSelected = true;
-        }
+    if (!targetSeedImg) {
+      // ── Fallback mở rộng: tìm bất kỳ ảnh crop nào khớp slug (không kiểm tra Restock) ──
+      for (let di = 0; di < docs.length; di += 1) {
+        targetSeedImg = findSeedPackImgInDoc(docs[di], slug, false) || findSeedPackImgInDoc(docs[di], slug, true);
+        if (targetSeedImg && !imageExcludedAsInventoryBecauseBettyMarket(targetSeedImg)) break;
+        targetSeedImg = null;
       }
+    }
 
-      if (seedSelected) {
-        runtime.cropDomLastSelectedSeedName = seedName;
-      }
-    } else {
+    if (!targetSeedImg) {
       logThrottled("crop_dom_no_seed_found", 10000, "Ruộng DOM: không tìm thấy hạt trong kho", { seedName, slug });
-    }
-
-    // Đóng kho đồ chỉ khi đã select được hạt
-    if (seedSelected) {
+      // Đóng inventory nếu đang mở (tránh để trần)
       await closeInventorySeedStripIfOpen();
+      return false;
     }
 
-    return seedSelected;
+    // Click vào ô hạt
+    const brown = findCropInventoryBrownSlot(targetSeedImg);
+    if (brown && d.isVisible(brown)) {
+      await clickCropInventoryBrownOnce(brown);
+    } else {
+      clickSeedImageRoot(targetSeedImg);
+      await sleep(rand(280, 420));
+    }
+
+    // Sau khi click hạt: tin vào thao tác click (không fail nếu selectbox không thấy ngay)
+    // SFL mới đôi khi selectbox chỉ hiện thoáng qua rồi đóng inventory tự động
+    await sleep(rand(350, 550));
+    const nowSelected = inventorySeedSlugAppearsSelected(slug);
+    if (nowSelected) {
+      logFlow("Ruộng DOM: đã chọn hạt (xác nhận qua selectbox)", { seedName });
+    } else {
+      // Thử click lần 2 rồi vẫn tin vào thao tác
+      clickSeedImageRoot(targetSeedImg);
+      await sleep(rand(350, 550));
+      if (inventorySeedSlugAppearsSelected(slug)) {
+        logFlow("Ruộng DOM: đã chọn hạt sau click lần 2", { seedName });
+      } else {
+        logFlow("Ruộng DOM: đã click hạt (không thấy selectbox — tin vào click)", { seedName });
+      }
+    }
+
+    // Đặt cache sau khi đã click hạt (dù selectbox có hiện hay không)
+    runtime.cropDomLastSelectedSeedName = seedName;
+
+    // Đóng kho đồ để chuẩn bị gieo
+    await closeInventorySeedStripIfOpen();
+    return true;
   }
 
   function tryBettyIntroBuySeeds() {
@@ -2363,11 +2491,17 @@
     if (shouldSkipCropDomSeedPurchase()) return false;
     if (!S.gameBridge?.isReady) return false;
 
+    // Xóa penalty cũ nếu đã hết hạn trước khi thử mua (tránh bị block từ lần trước)
+    const skipUntil = Math.floor(Number(runtime.cropDomSkipBuySeedsUntil) || 0);
+    if (skipUntil > 0 && now() >= skipUntil) {
+      runtime.cropDomSkipBuySeedsUntil = 0;
+    }
+
     // Refresh state trước khi mua
     try {
       await S.gameBridge.requestState();
     } catch (_e) { /* ignore */ }
-    await sleep(rand(100, 200));
+    await sleep(rand(80, 150));
 
     const st = S.gameBridge.getLatestState();
     if (!st) return false;
@@ -2413,12 +2547,12 @@
     // Mua số lượng ít nhất giữa: Sức mua, Hàng còn, Số ô đang trống trên ruộng
     const amount = Math.max(1, Math.min(available, affordableByCoins, emptyLeft));
 
-    // Cố gắng mua bằng vòng lặp thử lại nội bộ để che giấu sự chậm trễ của game server
+    // Cố gắng mua bằng vòng lặp thử lại nội bộ (6 lần, chờ ngắn hơn giữa các lần)
     let result;
-    for (let attempt = 1; attempt <= 4; attempt++) {
+    for (let attempt = 1; attempt <= 6; attempt++) {
       result = await S.gameBridge.sendEvent(
         { type: "seed.bought", item: seedToBuy, amount },
-        3200,
+        2800,
       );
       if (result?.ok) break; // Thành công thì thoát vòng lặp
       
@@ -2427,8 +2561,9 @@
         break; // Lỗi cứng (hết tiền) thì không thử lại
       }
       
-      // Nếu game báo bận (pending_actions), đứng chờ ngầm 1.5 giây rồi đập lại luôn, không cần báo ra ngoài!
-      await sleep(1500); 
+      // Game báo bận (pending_actions) → đợi ngắn hơn để phản hồi nhanh hơn
+      const waitMs = attempt <= 2 ? 600 : attempt <= 4 ? 900 : 1200;
+      await sleep(waitMs);
     }
 
     if (result?.ok) {
@@ -2444,7 +2579,8 @@
     if (/insufficient|not_enough|no_coins|funds/i.test(errReason)) {
       armCropDomSkipBuySeeds("khong_du_tien", 30 * 60 * 1000);
     } else {
-      armCropDomSkipBuySeeds("game_qua_lag", 5000); 
+      // Game lag → penalty ngắn hơn (3 giây) để thử lại nhanh
+      armCropDomSkipBuySeeds("game_qua_lag", 3000);
     }
     return false;
   }
@@ -3741,9 +3877,23 @@
     const preferredSeed = String(runtime.settings.cropDomSeedName || "Auto").trim();
     const skipLong = !!runtime.settings.cropDomSkipLongGrow;
 
-    // ── Chọn hạt gieo tốt nhất theo MÙA hiện tại (ngắn trước → dài sau) ──
-    const plantName = getBestSeedFromInventory(invNow, seasonKey, preferredSeed, skipLong)
-      || pickSeedForPlantingFromBridge(); // fallback nếu bridge chưa có inventory
+    // ── Chọn hạt gieo ──
+    // Ưu tiên: hạt đang cầm (cache) nếu vẫn còn trong inventory → gieo hết loại này rồi mới đổi.
+    // Không tính lại hạt tốt nhất mỗi tick (tránh đổi hạt giữa chừng).
+    const cachedSeedName = runtime.cropDomLastSelectedSeedName;
+    let plantName;
+    if (cachedSeedName && seedCountFromBridge(cachedSeedName) > 0) {
+      // Vẫn còn hạt đang cầm → tiếp tục gieo loại đó
+      plantName = cachedSeedName;
+    } else {
+      // Hết hoặc chưa chọn → chọn hạt tốt nhất theo mùa
+      if (cachedSeedName && !seedCountFromBridge(cachedSeedName)) {
+        logFlow("Ruộng DOM: hạt " + cachedSeedName + " đã hết — đổi sang loại khác", { cachedSeedName });
+        runtime.cropDomLastSelectedSeedName = null;
+      }
+      plantName = getBestSeedFromInventory(invNow, seasonKey, preferredSeed, skipLong)
+        || pickSeedForPlantingFromBridge();
+    }
     let stock = seedCountFromBridge(plantName);
 
     const emptyPlots = listEmptyCropPlotsFromState();
@@ -3760,12 +3910,38 @@
       runtime.cropDomWhenFullPollAt = 0;
     }
 
+    // ── Phát hiện stuck: gieo liên tục nhưng emptyLeft không giảm ──
+    // Xảy ra khi: cache sai (hạt không thực sự trong tay), game idle/mobile không nhận click.
+    // Bot log "gieo thành công" nhưng thực tế không có gì được trồng.
+    // Giải pháp: nếu emptyLeft không đổi sau >= 5 lần gieo liên tiếp → xóa cache, force re-select.
+    if (emptyLeft > 0 && emptyLeft === runtime._cropDomLastEmptyLeft && runtime.lastAction === "crop_plant_dom") {
+      runtime._cropDomStuckPlantCount = (runtime._cropDomStuckPlantCount || 0) + 1;
+      if (runtime._cropDomStuckPlantCount >= 5) {
+        logFlow(
+          "Ruộng DOM: ⚠ stuck — gieo " + runtime._cropDomStuckPlantCount + " lần mà ô trống không giảm — xóa cache hạt, force re-select",
+          { emptyLeft, cachedSeedName, stuckCount: runtime._cropDomStuckPlantCount },
+        );
+        runtime.cropDomLastSelectedSeedName = null;
+        runtime._cropDomStuckPlantCount = 0;
+      }
+    } else {
+      // emptyLeft đã thay đổi hoặc action khác → reset bộ đếm stuck
+      runtime._cropDomLastEmptyLeft = emptyLeft;
+      runtime._cropDomStuckPlantCount = 0;
+    }
+
     // (Khối tự động mua trước khi thu hoạch đã được xóa để ưu tiên Thu Hoạch trước theo yêu cầu của người dùng)
 
     const lastIsPlant = runtime.lastAction === "crop_plant_dom";
 
     if (bridgeReady && emptyLeft === 0 && now() < (runtime.cropDomWhenFullPollAt || 0)) {
       return false;
+    }
+
+    // ── Ưu tiên thu hoạch (nếu không đang dở tay gieo) ──
+    if (await tryHarvestOne()) {
+      runtime.cropDomWhenFullPollAt = 0;
+      return true;
     }
 
     // ── Gieo liên tục (nếu vừa gieo tick trước) ──
@@ -3776,12 +3952,6 @@
         await sleep(600); // UI chưa kịp hiện hình cây, đứng chờ không chuyển luồng
         return true;
       }
-    }
-
-    // ── Ưu tiên thu hoạch (nếu không đang dở tay gieo) ──
-    if (await tryHarvestOne()) {
-      runtime.cropDomWhenFullPollAt = 0;
-      return true;
     }
 
     if (bridgeReady && emptyLeft === 0) {
@@ -3854,54 +4024,10 @@
       }
     }
 
-    // Hết hạt + có ô trống → thử mua qua bridge rồi gieo ngay
+    // Hết hạt + có ô trống → Không tự động mua hạt lẻ nữa (sẽ mua gối đầu 12h một lần)
     if (bridgeReady && emptyLeft > 0 && stock <= 0) {
-      // Thu hoạch bù trước (nếu có cây chín)
-      if (await tryHarvestOne()) {
-        runtime.cropDomWhenFullPollAt = 0;
-        return true;
-      }
-      // Mua hạt qua bridge event
-      const bought = await tryBuyOneSeedViaEvent();
-      if (bought) {
-        logFlow("Ruộng: mua hạt qua bridge (hết stock gieo) — mùa " + seasonKey, { seasonKey });
-        runtime.lastAction = "crop_buy_seed_bridge";
-        runtime.lastActionAt = now();
-
-        // ── Sau khi mua xong: gieo ngay không chờ tick sau ──
-        // Refresh state để lấy inventory mới nhất
-        try { await S.gameBridge.requestState(); } catch (_e) { /* ignore */ }
-        await sleep(rand(100, 200));
-        const newPlantName = getBestSeedFromInventory(
-          S.gameBridge.getLatestState()?.inventory || {},
-          seasonKey, preferredSeed, skipLong,
-        ) || plantName;
-        const plantRes = await tryPlantOne(newPlantName);
-        if (plantRes === true) {
-          runtime.lastAction = "crop_plant_dom";
-          runtime.lastActionAt = now();
-        }
-        return true;
-      }
-      
-      // Không mua được: GIỮ LUỒNG CROP SỐNG — không bao giờ bỏ đi khi còn ô trống cần hạt
-      const penaltyLeft = (runtime.cropDomSkipBuySeedsUntil || 0) - now();
-      if (penaltyLeft > 0) {
-        // Chờ tối đa 3 giây mỗi tick, rồi quay lại thử — kể cả penalty dài (5 phút)
-        // Điều này giữ crop flow không chuyển sang luồng khác khi vẫn còn ô trống thiếu hạt
-        const waitMs = Math.min(penaltyLeft, 3000);
-        logThrottled(
-          "crop_dom_buy_wait_penalty", 15000,
-          "Ruộng: có " + emptyLeft + " ô trống thiếu hạt — chờ " + Math.ceil(penaltyLeft / 1000) + "s rồi thử mua lại",
-          { emptyLeft, penaltyLeftSec: Math.ceil(penaltyLeft / 1000) },
-        );
-        await sleep(waitMs);
-        return true; // GIỮ VÒNG LẶP CROP LIÊN TỤC KHÔNG CHUYỂN LUỒNG
-      }
-
-      // Penalty đã hết nhưng vẫn mua thất bại (race condition) → chờ ngắn rồi thử lại
-      await sleep(rand(1000, 2000));
-      return true;
+      logThrottled("crop_dom_out_of_seeds_waiting", 15000, "Ruộng: Hết hạt giống trong kho, chờ luồng Reset mua gối đầu", { emptyLeft });
+      return false;
     }
 
     return false;
@@ -4013,6 +4139,75 @@
     return false;
   }
 
+  /**
+   * Mua hết tất cả các loại hạt giống có thể mua của mùa hiện tại (dùng khi reset 12h).
+   * Không giới hạn số lượng theo ô đất trống, mua tối đa stock của cửa hàng trong tầm coins.
+   */
+  async function buyAllPossibleSeedsViaEvent() {
+    if (!S.gameBridge?.isReady) return false;
+    logFlow("Reset Purchase: Bắt đầu mua hết hạt giống có thể mua...", {});
+
+    try {
+      await S.gameBridge.requestState();
+    } catch (_e) { /* ignore */ }
+    await sleep(400);
+
+    const st = S.gameBridge.getLatestState();
+    if (!st) return false;
+
+    const seasonKey = normalizeSeasonName(st.season);
+    let coins = typeof st.coins === "number" && Number.isFinite(st.coins) ? st.coins : 0;
+    const stock = st.stock || {};
+    const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
+    const allowedSet = new Set(allowed);
+
+    // Lọc các hạt thuộc mùa hiện tại và sắp xếp theo thứ tự mua
+    const seedsToBuy = SEED_BUY_ORDER_DOM.filter((s) => {
+      if (GREENHOUSE_SEED_NAMES_DOM.includes(s)) return false;
+      return allowedSet.has(s);
+    });
+
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
+
+    let anyBought = false;
+    for (const seed of seedsToBuy) {
+      const available = Math.floor(Number(stock[seed] || 0));
+      if (available <= 0) continue;
+
+      const price = getNormalSeedBuyPriceDom(seed);
+      if (price === Number.MAX_SAFE_INTEGER || coins < price) continue;
+
+      // Mua tối đa số lượng affordable trong stock
+      const amount = Math.min(available, Math.floor(coins / price));
+      if (amount <= 0) continue;
+
+      logFlow(`Reset Purchase: Đang tiến hành mua ${amount} hạt ${seed} (giá ${price} xu/hạt)`, {});
+
+      let result;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        result = await S.gameBridge.sendEvent(
+          { type: "seed.bought", item: seed, amount },
+          3500
+        );
+        if (result?.ok) break;
+        await sleep(600);
+      }
+
+      if (result?.ok) {
+        anyBought = true;
+        coins -= amount * price;
+        stock[seed] = Math.max(0, available - amount);
+        logFlow(`Reset Purchase: Đã mua thành công ${amount} hạt ${seed}`, { coinsLeft: coins });
+        await sleep(rand(300, 500));
+      } else {
+        logFlow(`Reset Purchase: Mua hạt ${seed} thất bại`, { error: result?.error });
+      }
+    }
+
+    logFlow("Reset Purchase: Hoàn tất mua hạt giống gối đầu!", { anyBought });
+    return anyBought;
+  }
+
   S.cropDom = {
     tryOneFarmStep,
     tryTapChestCaptchaIfPresent,
@@ -4021,5 +4216,6 @@
     isBettySeedShopDialogOpen,
     tryBuyAxeViaEvent,
     tryExpandIslandViaEvent,
+    buyAllPossibleSeedsViaEvent,
   };
 })(window.SFL);

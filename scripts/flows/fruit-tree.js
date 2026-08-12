@@ -112,15 +112,66 @@
     return false;
   }
 
+  /**
+   * Selector ảnh cho cây ăn quả hết lượt (cần chặt bằng rìu):
+   * - Cây to hết lượt (Dead stage): dead_tree, old_tree, dead.png, withered, dry_tree
+   * - Cây bụi hết lượt (Dead bush): stump, dead_bush
+   * SFL CDN thường có path dạng: assets/fruit/{name}/dead.webp hoặc assets/fruit/{name}/dead_tree.png
+   */
+  const FRUIT_DEAD_TREE_IMG_SELECTOR = [
+    'img[src*="dead"]',
+    'img[src*="stump"]',
+    'img[src*="old_tree"]',
+    'img[src*="dead_tree"]',
+    'img[src*="withered"]',
+    'img[src*="dry_tree"]',
+    'img[src*="dead_bush"]',
+  ].join(", ");
+
+  /** Kiểm tra xem một phần tử DOM có phải là DeadTree component qua React Fiber không. */
+  function isFruitDeadTreeViaFiber(el) {
+    if (!el) return false;
+    try {
+      const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber") || k.startsWith("__reactInternalInstance"));
+      if (!fiberKey) return false;
+      let f = el[fiberKey];
+      for (let depth = 0; depth < 40 && f; depth += 1) {
+        const name = String(f?.elementType?.displayName || f?.elementType?.name || f?.type?.displayName || f?.type?.name || "");
+        if (/DeadTree|dead_tree|FruitStump/i.test(name)) return true;
+        // Kiểm tra props patchFruitName kết hợp harvestsLeft = 0
+        const props = f.memoizedProps || f.pendingProps;
+        if (props && typeof props === "object") {
+          if (props.patchFruitName && (props.hasAxes === true || props.hasAxes === false)) return true;
+        }
+        f = f.return;
+      }
+    } catch (_e) {
+      // ignore
+    }
+    return false;
+  }
+
   async function tryClearStump() {
-    // Tìm bằng DOM: ảnh stump/dead
     const docs = d.collectDocumentsForGameDom();
     for (const doc of docs) {
-      const imgs = doc.querySelectorAll('img[src*="dead"], img[src*="stump"]');
+      // Selector mở rộng: nhận cả cây to chết (dead) lẫn gốc khô (stump)
+      let imgs;
+      try {
+        imgs = doc.querySelectorAll(FRUIT_DEAD_TREE_IMG_SELECTOR);
+      } catch (_e) {
+        continue;
+      }
       for (const img of imgs) {
+        const src = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
+        // Bỏ qua nếu src không liên quan đến fruit (tránh nhầm với crop/rock)
+        if (!src.includes("/fruit/") && !src.includes("fruit_") && !src.includes("fruit/")) {
+          // Fallback: kiểm tra qua Fiber xem có phải DeadTree component không
+          if (!isFruitDeadTreeViaFiber(img)) continue;
+        }
         const root = getFruitPatchRoot(img);
         if (root && d.isVisible(root)) {
-          logFlow("Cây ăn quả: chặt gốc cây già", {});
+          const isDeadStage = /dead|stump|old_tree|withered|dry_tree|dead_bush/i.test(src);
+          logFlow("Cây ăn quả: chặt gốc cây già/cây to hết lượt", { src: src.split("/").slice(-2).join("/"), isDeadStage });
           // Đảm bảo chọn rìu
           if (typeof S.workbench?.ensureToolSelectedDom === "function") {
             await S.workbench.ensureToolSelectedDom("Axe");
@@ -129,6 +180,26 @@
           await uiJitter();
           return true;
         }
+      }
+      // Fallback: quét toàn bộ img trong fruit patch và kiểm tra Fiber DeadTree
+      try {
+        const allImgs = doc.querySelectorAll("img[src]");
+        for (const img of allImgs) {
+          if (!d.isVisible(img)) continue;
+          if (!isFruitDeadTreeViaFiber(img)) continue;
+          const root = getFruitPatchRoot(img);
+          if (root && d.isVisible(root)) {
+            logFlow("Cây ăn quả: chặt gốc (phát hiện qua Fiber DeadTree)", {});
+            if (typeof S.workbench?.ensureToolSelectedDom === "function") {
+              await S.workbench.ensureToolSelectedDom("Axe");
+            }
+            d.click(root);
+            await uiJitter();
+            return true;
+          }
+        }
+      } catch (_e2) {
+        // ignore
       }
     }
     return false;

@@ -126,6 +126,38 @@
                 nextInMs: Math.max(0, on ? nextTap - currentTime : Number.MAX_SAFE_INTEGER),
               };
             })(),
+            fruitTree: (() => {
+              const on = !!runtime.settings.autoFruitTree;
+              return {
+                name: "Luồng: trồng + thu hoạch cây ăn quả (DOM)",
+                enabled: on,
+                startedAt: runtime.fruitTreeFlowStartedAt || 0,
+                nextAt: on ? (runtime.nextFruitTreeFlowAt || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER,
+                intervalMs: S.FRUIT_TREE_FLOW_INTERVAL_MS,
+                state: runtime.fruitTreeFlowState || "—",
+                noToolQueue: true,
+                queueCaption: "Thu trái chín → chặt gốc già → trồng mới",
+                queueSize: 0,
+                queueLabel: "",
+                nextInMs: Math.max(0, on ? (runtime.nextFruitTreeFlowAt || Number.MAX_SAFE_INTEGER) - currentTime : Number.MAX_SAFE_INTEGER),
+              };
+            })(),
+            honey: (() => {
+              const on = !!runtime.settings.autoHoney;
+              return {
+                name: "Luồng: thu hoạch hoa, mật ong (DOM + Bridge)",
+                enabled: on,
+                startedAt: runtime.honeyFlowStartedAt || 0,
+                nextAt: on ? (runtime.nextHoneyFlowAt || Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER,
+                intervalMs: S.HONEY_FLOW_INTERVAL_MS,
+                state: runtime.honeyFlowState || "—",
+                noToolQueue: true,
+                queueCaption: "Beehive produced ≥ 100 → Thu mật",
+                queueSize: 0,
+                queueLabel: "",
+                nextInMs: Math.max(0, on ? (runtime.nextHoneyFlowAt || Number.MAX_SAFE_INTEGER) - currentTime : Number.MAX_SAFE_INTEGER),
+              };
+            })(),
           },
         },
       });
@@ -257,6 +289,18 @@
         if (schema < 13) {
           Object.assign(patch, {
             cropDomBuySeedsAtBetty: S.DEFAULT_SETTINGS.cropDomBuySeedsAtBetty,
+          });
+        }
+        if (schema < 16) {
+          Object.assign(patch, {
+            masterEnabled: S.DEFAULT_SETTINGS.masterEnabled,
+            autoMine: S.DEFAULT_SETTINGS.autoMine,
+            autoFarmCropsDom: S.DEFAULT_SETTINGS.autoFarmCropsDom,
+            cropDomSkipLongGrow: S.DEFAULT_SETTINGS.cropDomSkipLongGrow,
+            cropDomBuySeedsAtBetty: S.DEFAULT_SETTINGS.cropDomBuySeedsAtBetty,
+            reloadPageOnGoblinMoonCaptcha: S.DEFAULT_SETTINGS.reloadPageOnGoblinMoonCaptcha,
+            autoExpandIsland: S.DEFAULT_SETTINGS.autoExpandIsland,
+            mineTargetSunstone: S.DEFAULT_SETTINGS.mineTargetSunstone,
           });
         }
         settings = S.normalizeSettings(Object.assign({}, settings, patch));

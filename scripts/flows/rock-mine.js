@@ -328,7 +328,7 @@
   }
 
   function rockTileLooksDepleted(tile) {
-    if (!tile || !tile.isConnected) return true;
+    if (!tile || !tile.isConnected) return false;
     if (resourceTileContainsRecoversIn(tile)) return true;
     const highlight =
       tile.matches?.(".cursor-pointer.hover\\:img-highlight") || tile.matches?.("[class*='cursor-pointer'][class*='img-highlight']")
@@ -339,7 +339,7 @@
   }
 
   function rockTileDefinitelyDone(tile) {
-    if (!tile || !tile.isConnected) return true;
+    if (!tile || !tile.isConnected) return false;
     if (resourceTileContainsRecoversIn(tile)) return true;
     return d.textOf(tile).includes("recovers in");
   }
@@ -557,7 +557,7 @@
     if (strikesDone > 0) {
       await sleep(rand(100, 260));
       const tileNow = targetTileBefore?.isConnected ? targetTileBefore : mineStrikeContextTile(clickable);
-      const rockDone = tileNow ? rockTileLooksDepleted(tileNow) : false;
+      const rockDone = tileNow ? rockTileDefinitelyDone(tileNow) : false;
       if (rockDone) {
         logFlow("Đào đá: đủ tap (game tự khai thác sau click cuối — không có nút Mine)", {
           kind: job?.kind,
@@ -568,6 +568,16 @@
         });
         finalizeMineStickyIfRockDone(clickable);
         return { worked: true, mined: true };
+      }
+      const maybeDepleted = tileNow ? rockTileLooksDepleted(tileNow) : false;
+      if (maybeDepleted) {
+        logFlow("Dao da: DOM dang doi trang thai sau tap - chua khoa node, se thu tiep tick sau", {
+          kind: job?.kind,
+          id: job?.id,
+          strikes: strikesDone,
+          need: needed,
+        });
+        return { worked: true, mined: false };
       }
       const mineAfter = d.findMineActionButton();
       if (mineAfter && d.nativeClickClose(mineAfter)) {
@@ -583,7 +593,6 @@
           need: needed,
           rockDone,
         });
-        finalizeMineStickyIfRockDone(clickable);
         return { worked: true, mined: false };
       }
       logFlow("Đào đá: chưa đủ tap hoặc node chưa đổi trạng thái", {
@@ -599,7 +608,7 @@
       await uiJitter();
       await sleep(rand(120, 280));
       const tileAfter = mineStrikeContextTile(clickable);
-      if (tileAfter && rockTileLooksDepleted(tileAfter)) {
+      if (tileAfter && rockTileDefinitelyDone(tileAfter)) {
         finalizeMineStickyIfRockDone(clickable);
         return { worked: true, mined: true };
       }
@@ -621,6 +630,16 @@
         kind: job.kind,
       });
       return true;
+    }
+    const errText = String(result?.error || "");
+    if (/not\s+placed|not\s+found|does\s+not\s+exist|invalid\s+node/i.test(errText)) {
+      markNodeMinedInSession(job.nodeKey, 5 * 60 * 1000);
+      if (mineLockedKind === job.kind) {
+        mineLockedKind = null;
+        S.clearMineSticky();
+      }
+      logFlow("Đào đá: bridge báo node không hợp lệ — khóa tạm node và nhường luồng khác", { job, error: result?.error });
+      return false;
     }
     logFlow("Đào đá: bridge sendEvent thất bại", { job, error: result?.error });
     return false;
@@ -651,6 +670,7 @@
 
   function advanceLockedKindForToolGap(readyAll, toolData) {
     if (!mineLockedKind) return;
+    if (runtime.mineLastDomProgressAt && now() - runtime.mineLastDomProgressAt < 15000) return;
     if ((readyAll.stats?.[mineLockedKind]?.coTheDao || 0) <= 0) return;
     const hasToolForLocked = toolData.jobs.some((j) => j.kind === mineLockedKind);
     if (hasToolForLocked) return;
@@ -795,6 +815,53 @@
           coTheDao: readyAll.stats?.[mineLockedKind]?.coTheDao || 0,
         });
       }
+      // --- FIX: locked kind không có DOM → thử tạm kind khác có cả DOM lẫn tool ---
+      // Không ghi đè mineLockedKind vĩnh viễn, chỉ thử trong lần gọi này để tránh bỏ phí tick.
+      const altKindEntry = PICKAXE_FLOW_ORDER.find((entry) => {
+        if (entry.kind === mineLockedKind) return false;
+        if (!isOreTypeEnabled(entry.kind)) return false;
+        if (mineSkippedKindsThisSession.has(entry.kind)) return false;
+        if ((readyAll.stats?.[entry.kind]?.coTheDao || 0) <= 0) return false;
+        // Phải có tool đủ
+        if (!toolData.jobs.some((j) => j.kind === entry.kind)) return false;
+        // Phải có DOM target
+        return getDomRockTargetsForKind(entry.kind).length > 0;
+      });
+      if (altKindEntry) {
+        const altDomTargets = getDomRockTargetsForKind(altKindEntry.kind);
+        const altJobsForDom = readyAll.jobs.filter(
+          (j) => j.kind === altKindEntry.kind && toolData.jobs.some((tj) => tj.nodeKey === j.nodeKey)
+        );
+        altJobsForDom.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        const altPaired = altJobsForDom.length && altDomTargets.length
+          ? pairJobsToDomClickables(altJobsForDom, altDomTargets)
+          : [];
+        if (altPaired.length) {
+          logFlow("Đào đá: locked kind không có DOM — tạm đào kind thay thế trong viewport", {
+            lockedKind: mineLockedKind,
+            altKind: altKindEntry.kind,
+          });
+          if (!inCooldown("mine-node", 1900)) {
+            markCooldown("mine-node", 1900);
+            const altPair = altPaired[0];
+            const altResult = await performDomMineRound(altPair.clickable, altPair.job);
+            if (altResult.mined) {
+              markNodeMinedInSession(altPair.job.nodeKey, altPair.job.recoveryMs);
+              mineFlowPending = true;
+              S.gameBridge.requestState().catch(() => {});
+              runtime.lastAction = "mine_rock";
+              return true;
+            }
+            if (altResult.worked) {
+              mineFlowPending = true;
+              runtime.mineLastDomProgressAt = now();
+              S.gameBridge.requestState().catch(() => {});
+              runtime.lastAction = "mine_dom_progress";
+              return true;
+            }
+          }
+        }
+      }
     }
 
     if (targetPair) {
@@ -815,6 +882,7 @@
       }
       if (domResult.worked) {
         mineFlowPending = true;
+        runtime.mineLastDomProgressAt = now();
         S.gameBridge.requestState().catch(() => {});
         runtime.lastAction = "mine_dom_progress";
         return true;
@@ -933,11 +1001,15 @@
     if (mineJobsTool.length <= 0 && readyAll.summary.coTheDao > 0 && !runtime.settings.autoBuyTools) {
       if (!inCooldown("mine-low-bridge-tools", 14000)) {
         markCooldown("mine-low-bridge-tools", 14000);
-        logFlow("Đào đá: bridge báo thiếu cuốc — vẫn thử DOM; bật «Tự mua công cụ (rìu + cuốc)» trong popup extension", {
+        logFlow("Đào đá: thiếu cuốc và tắt tự mua — bỏ qua luồng đá để chuyển luồng khác", {
           "Tổng node có thể đào": readyAll.summary.coTheDao,
           chiTietThieu: formatPickaxeDemandSummary(getPickaxeDemandSnapshot(readyAll)),
         });
       }
+      mineFlowPending = false;
+      runtime.rockFlowResumeAt = now() + 30000;
+      runtime.lastAction = "mine_no_pickaxe_skip";
+      return false;
     }
 
     if (
@@ -984,6 +1056,7 @@
     flowCooldowns.clear();
     runtime.mineDomRegistry = null;
     runtime.lastMineDomRegistryAt = 0;
+    runtime.mineLastDomProgressAt = 0;
     S.clearMineSticky();
   }
 

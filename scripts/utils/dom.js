@@ -240,6 +240,31 @@
       // ignore
     }
     
+    // Touch events (mobile / tablet) — gửi trước để game SFL nhận được khi idle
+    try {
+      if (typeof TouchEvent !== "undefined" && typeof Touch !== "undefined") {
+        const touch = new Touch({
+          identifier: Date.now(),
+          target: el,
+          clientX: cx,
+          clientY: cy,
+          screenX: cx,
+          screenY: cy,
+          pageX: cx + (vw.scrollX || 0),
+          pageY: cy + (vw.scrollY || 0),
+          radiusX: 1,
+          radiusY: 1,
+          rotationAngle: 0,
+          force: 1,
+        });
+        const touchOpts = { bubbles: true, cancelable: true, touches: [touch], changedTouches: [touch], targetTouches: [touch] };
+        el.dispatchEvent(new TouchEvent("touchstart", touchOpts));
+        el.dispatchEvent(new TouchEvent("touchend", touchOpts));
+      }
+    } catch (_e) {
+      // ignore — môi trường không hỗ trợ TouchEvent
+    }
+
     try {
       if (typeof PointerEvent !== "undefined") {
         el.dispatchEvent(new PointerEvent("pointerover", { ...opts, pointerId: 1, pointerType: "mouse" }));

@@ -557,6 +557,7 @@
 			})),
 			inventory: serializeInventory(state.inventory),
 			stock: serializeInventory(state.stock),
+			bumpkinExperience: toSafeNumber(state?.bumpkin?.experience),
 			buildings: (() => {
 				// state.buildings có thể là object-map { name: [inst,...] } HOẶC { name: { id: inst } }
 				// toList duyệt Object.entries(state.buildings) → (name, value)

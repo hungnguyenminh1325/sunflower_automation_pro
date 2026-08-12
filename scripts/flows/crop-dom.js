@@ -187,6 +187,72 @@
     "Lily Seed",
   ];
 
+  const SEED_LEVEL_REQUIREMENTS = {
+    "Sunflower Seed": 1,
+    "Potato Seed": 1,
+    "Rhubarb Seed": 2,
+    "Pumpkin Seed": 3,
+    "Zucchini Seed": 4,
+    "Carrot Seed": 5,
+    "Yam Seed": 6,
+    "Cabbage Seed": 7,
+    "Broccoli Seed": 8,
+    "Soybean Seed": 9,
+    "Beetroot Seed": 10,
+    "Pepper Seed": 11,
+    "Cauliflower Seed": 12,
+    "Wheat Seed": 12,
+    "Turnip Seed": 13,
+    "Parsnip Seed": 13,
+    "Eggplant Seed": 14,
+    "Corn Seed": 14,
+    "Onion Seed": 15,
+    "Radish Seed": 15,
+    "Kale Seed": 16,
+    "Artichoke Seed": 17,
+    "Barley Seed": 18,
+    "Tomato Seed": 10,
+    "Apple Seed": 13,
+    "Apple Sapling": 13,
+    "Orange Seed": 15,
+    "Orange Sapling": 15,
+    "Blueberry Seed": 14,
+    "Blueberry Seeds": 14,
+    "Lemon Seed": 16,
+    "Lemon Sapling": 16,
+    "Pear Seed": 17,
+    "Pear Sapling": 17,
+    "Plum Seed": 18,
+    "Plum Sapling": 18,
+    "Grape Seed": 18,
+    "Grape Sapling": 18,
+    "Banana Seed": 16,
+    "Banana Sapling": 16,
+    "Banana Plant": 16,
+    "Sunpetal Seed": 13,
+    "Bloom Seed": 16,
+    "Lily Seed": 19,
+  };
+
+  function getBumpkinLevel(xp) {
+    if (!xp || xp < 0) return 1;
+    const reqs = [0, 50, 150, 350, 750, 1500, 2500];
+    let currentXp = 2500;
+    let diff = 1000;
+    for (let l = 7; l <= 150; l++) {
+      diff += 500;
+      currentXp += diff;
+      reqs.push(currentXp);
+    }
+    for (let i = 0; i < reqs.length; i++) {
+      if (xp < reqs[i]) return i;
+    }
+    return reqs.length;
+  }
+
+  S.SEED_LEVEL_REQUIREMENTS = SEED_LEVEL_REQUIREMENTS;
+  S.getBumpkinLevel = getBumpkinLevel;
+
   /** Hạt nhà kính — không mua vào plot thường. */
   const GREENHOUSE_SEED_NAMES_DOM = ["Grape Seed", "Olive Seed", "Rice Seed"];
 
@@ -208,10 +274,24 @@
    * Ưu tiên: hạt ưu tiên người dùng → rẻ nhất theo mùa → ngắn nhất nếu skipLongGrow.
    */
   function getNextSeedToBuyViaEvent(stock, seasonKey, preferredSeed, skipLongGrow) {
-    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên mua hạt này NẾU đúng mùa. Nếu Betty hết hàng hoặc hạt sai mùa, chuyển qua hạt khác
+    let bumpkinLevel = 999;
+    if (S.gameBridge?.isReady) {
+      const st = S.gameBridge.getLatestState();
+      if (st) {
+        const xp = st.bumpkinExperience || 0;
+        bumpkinLevel = getBumpkinLevel(xp);
+      }
+    }
+
+    // Nếu người dùng chọn hạt cụ thể -> Ưu tiên mua hạt này NẾU đúng mùa và đủ cấp độ
     if (preferredSeed && preferredSeed !== "Auto") {
       const allowedForPref = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
-      if (allowedForPref.includes(preferredSeed) && (stock[preferredSeed] || 0) > 0) return preferredSeed;
+      if (allowedForPref.includes(preferredSeed) && (stock[preferredSeed] || 0) > 0) {
+        const reqLevel = SEED_LEVEL_REQUIREMENTS[preferredSeed];
+        if (!reqLevel || bumpkinLevel >= reqLevel) {
+          return preferredSeed;
+        }
+      }
     }
 
     const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
@@ -222,6 +302,10 @@
       if (GREENHOUSE_SEED_NAMES_DOM.includes(s)) return false;
       if (!allowedSet.has(s)) return false;
       if (runtime.lockedSeeds?.has(s)) return false; // Bỏ qua hạt đã được phát hiện là bị khóa (Locked)
+      
+      const reqLevel = SEED_LEVEL_REQUIREMENTS[s];
+      if (reqLevel && bumpkinLevel < reqLevel) return false; // Bỏ qua nếu chưa đủ cấp độ mở khóa
+      
       return true;
     });
     if (available.length === 0) return null;
@@ -4247,10 +4331,13 @@
 
     const seedsToBuy = [...cropSeeds, ...extraSeeds];
 
-    // Lọc và in ra màn hình danh sách hạt giống thực tế có thể mua trong mùa hiện tại (tồn tại trong stock)
-    const activeCrops = cropSeeds.filter(s => stock[s] !== undefined);
-    const activeFruits = FRUIT_SAPLINGS_DOM.filter(s => stock[s] !== undefined);
-    const activeFlowers = FLOWER_SEEDS_DOM.filter(s => stock[s] !== undefined);
+    const xp = st.bumpkinExperience || 0;
+    const bumpkinLevel = getBumpkinLevel(xp);
+
+    // Lọc và in ra màn hình danh sách hạt giống thực tế có thể mua trong mùa hiện tại (tồn tại trong stock và đã mở khóa)
+    const activeCrops = cropSeeds.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
+    const activeFruits = FRUIT_SAPLINGS_DOM.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
+    const activeFlowers = FLOWER_SEEDS_DOM.filter(s => stock[s] !== undefined && (!SEED_LEVEL_REQUIREMENTS[s] || bumpkinLevel >= SEED_LEVEL_REQUIREMENTS[s]));
 
     logFlow(`=== DANH SÁCH HẠT MUA THEO MÙA (${seasonKey.toUpperCase()}) ===`, {});
     logFlow(`-> Hạt ruộng đúng mùa: ` + (activeCrops.length > 0 ? activeCrops.join(", ") : "Không có"), {});
@@ -4258,11 +4345,17 @@
     logFlow(`-> Hạt hoa đúng mùa: ` + (activeFlowers.length > 0 ? activeFlowers.join(", ") : "Không có"), {});
     logFlow(`===================================================`, {});
 
-    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey} (Bumpkin Cấp ${bumpkinLevel}). Có ${seedsToBuy.length} loại hạt cần check.`, { coins });
 
     let anyBought = false;
     for (const seed of seedsToBuy) {
       if (runtime.lockedSeeds?.has(seed)) continue; // Bỏ qua nếu hạt này đã bị khóa (chưa mở khóa)
+
+      // Kiểm tra cấp độ Bumpkin để tránh mua hạt chưa được mở khóa
+      const reqLevel = SEED_LEVEL_REQUIREMENTS[seed];
+      if (reqLevel && bumpkinLevel < reqLevel) {
+        continue; // Bỏ qua vì cấp độ tài khoản chưa đủ để mở khóa
+      }
 
       const available = Math.floor(Number(stock[seed] || 0));
       if (available <= 0) continue;

@@ -100,20 +100,33 @@
   function getBestSaplingFromInventory(inventory) {
     if (!inventory) return null;
     
-    // Lấy tồn kho (stock) hiện tại từ game để biết hạt nào đang trong mùa
+    // Lấy tồn kho (stock) hiện tại từ game để biết hạt nào đang trong mùa và cấp độ tài khoản
     let stock = null;
+    let bumpkinLevel = 999;
     if (S.gameBridge?.isReady) {
       const st = S.gameBridge.getLatestState();
-      if (st && st.stock) stock = st.stock;
+      if (st) {
+        if (st.stock) stock = st.stock;
+        const xp = st.bumpkinExperience || 0;
+        if (typeof S.getBumpkinLevel === "function") {
+          bumpkinLevel = S.getBumpkinLevel(xp);
+        }
+      }
     }
 
     // Thứ tự ưu tiên theo danh sách SAPLING_NAMES
     for (const name of SAPLING_NAMES) {
       if ((inventory[name] || 0) >= 1) {
         // Chỉ gieo trồng nếu hạt giống này có bán trong shop hiện tại (tức là đúng mùa)
-        // Nếu không có thông tin stock (game lag/chưa load), ta fallback cho phép gieo để tránh kẹt
         if (stock && stock[name] === undefined) {
           continue;
+        }
+        // Kiểm tra yêu cầu cấp độ của hạt
+        if (S.SEED_LEVEL_REQUIREMENTS) {
+          const reqLevel = S.SEED_LEVEL_REQUIREMENTS[name];
+          if (reqLevel && bumpkinLevel < reqLevel) {
+            continue; // Bỏ qua nếu cấp độ tài khoản chưa đủ
+          }
         }
         return name;
       }

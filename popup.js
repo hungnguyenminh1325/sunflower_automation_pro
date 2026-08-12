@@ -1,5 +1,4 @@
 const ids = {
-  masterEnabled: document.getElementById("masterEnabled"),
   autoBuyTools: document.getElementById("autoBuyTools"),
   autoRestockBlacksmith: document.getElementById("autoRestockBlacksmith"),
   autoSunflowerBasic: document.getElementById("autoSunflowerBasic"),
@@ -129,7 +128,7 @@ async function send(tabId, message) {
 
 function readUiSettings() {
   return {
-    masterEnabled: !!ids.masterEnabled.checked,
+    masterEnabled: true,
     autoBuyTools: !!ids.autoBuyTools.checked,
     autoSunflowerBasic: !!ids.autoSunflowerBasic?.checked,
     autoChop: !!ids.autoSunflowerBasic?.checked,
@@ -156,7 +155,6 @@ function readUiSettings() {
 }
 
 function renderSettings(settings) {
-  ids.masterEnabled.checked = !!settings.masterEnabled;
   ids.autoBuyTools.checked = !!settings.autoBuyTools;
   if (ids.autoRestockBlacksmith) ids.autoRestockBlacksmith.checked = !!settings.autoRestockBlacksmith;
   if (ids.autoSunflowerBasic) ids.autoSunflowerBasic.checked = !!settings.autoSunflowerBasic;
@@ -245,7 +243,6 @@ async function saveSettingsAuto() {
 }
 
 const autoSaveTargets = [
-  ids.masterEnabled,
   ids.autoBuyTools,
   ids.autoRestockBlacksmith,
   ids.autoSunflowerBasic,

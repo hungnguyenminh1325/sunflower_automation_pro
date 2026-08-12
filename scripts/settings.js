@@ -41,7 +41,7 @@
       merged.autoCookKitchen = input.autoCook;
     }
 
-    merged.masterEnabled = asBool(merged.masterEnabled, D.masterEnabled);
+    merged.masterEnabled = true;
     merged.autoBuyTools = asBool(merged.autoBuyTools, D.autoBuyTools);
     merged.autoRestockBlacksmith = asBool(merged.autoRestockBlacksmith, D.autoRestockBlacksmith);
     merged.autoSunflowerBasic = asBool(merged.autoSunflowerBasic, D.autoSunflowerBasic);

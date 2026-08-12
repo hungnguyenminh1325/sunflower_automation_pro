@@ -90,6 +90,12 @@
      * 0 = không chặn.
      */
     _shopAutomationHold: 0,
+    /** Đã chạy thành công luồng mua công cụ tự động khi khởi động trong session này chưa */
+    resetPurchaseToolsDone: false,
+    resetPurchaseToolsLastAttemptAt: 0,
+    /** Đã chạy thành công luồng mua hạt giống tự động khi khởi động trong session này chưa */
+    resetPurchaseSeedsDone: false,
+    resetPurchaseSeedsLastAttemptAt: 0,
   };
   S.clearChopSticky = function clearChopSticky() {
     S.runtime.chopStickyTile = null;

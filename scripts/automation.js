@@ -131,17 +131,6 @@
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
 
-    // ── Kích hoạt luồng mua đồ 12h nếu cờ được set ──
-    try {
-      if (localStorage.getItem("sfl_run_reset_purchase_flow") === "true") {
-        if (typeof S.resetPurchase?.runResetPurchaseFlow === "function") {
-          await S.resetPurchase.runResetPurchaseFlow();
-        } else {
-          S.time.logFlow("Reset Purchase: Không tìm thấy hàm S.resetPurchase.runResetPurchaseFlow", {});
-        }
-        return;
-      }
-    } catch (e) { /* ignore */ }
     if (typeof S.pullAutomationFlagsFromStorage === "function") {
       await S.pullAutomationFlagsFromStorage();
     }
@@ -186,6 +175,62 @@
       });
     }
     runtime._wasOnFarmRoute = true;
+
+    // ── Kích hoạt luồng mua đồ tự động (rìu + cuốc + hạt) 1 lần duy nhất khi khởi động ──
+    if (runtime.settings.autoBuyTools) {
+      const tNow = S.time.now();
+      const COOLDOWN_MS = 25000; // 25s giãn cách giữa các lần thử lại nếu thất bại
+
+      // 1. Auto mua công cụ (rìu + cuốc)
+      if (!runtime.resetPurchaseToolsDone) {
+        if (tNow - (runtime.resetPurchaseToolsLastAttemptAt || 0) > COOLDOWN_MS) {
+          runtime.resetPurchaseToolsLastAttemptAt = tNow;
+          if (typeof S.workbench?.buyAllToolsBatch === "function") {
+            S.time.logFlow("Reset Purchase: Khởi động app, bắt đầu luồng tự mua công cụ (rìu + cuốc)...", {});
+            runtime.busy = true;
+            try {
+              const success = await S.workbench.buyAllToolsBatch();
+              if (success) {
+                runtime.resetPurchaseToolsDone = true;
+                S.time.logFlow("Reset Purchase: Đã mua xong công cụ (hoặc không còn gì khả dụng để mua)!", {});
+              } else {
+                S.time.logFlow("Reset Purchase: Mua công cụ chưa thành công (sẽ tự động thử lại sau)...", {});
+              }
+            } catch (e) {
+              S.time.logFlow("Reset Purchase: Lỗi khi tự mua công cụ: " + e.message, {});
+            } finally {
+              runtime.busy = false;
+            }
+            return;
+          }
+        }
+      }
+
+      // 2. Auto mua hạt giống
+      if (!runtime.resetPurchaseSeedsDone) {
+        if (S.gameBridge?.isReady && tNow - (runtime.resetPurchaseSeedsLastAttemptAt || 0) > COOLDOWN_MS) {
+          runtime.resetPurchaseSeedsLastAttemptAt = tNow;
+          if (typeof S.cropDom?.buyAllPossibleSeedsViaEvent === "function") {
+            S.time.logFlow("Reset Purchase: Khởi động app, bắt đầu luồng tự mua hạt giống...", {});
+            runtime.busy = true;
+            try {
+              const res = await S.cropDom.buyAllPossibleSeedsViaEvent();
+              if (res && res.ok) {
+                runtime.resetPurchaseSeedsDone = true;
+                S.time.logFlow("Reset Purchase: Đã mua xong hạt giống thành công!", {});
+              } else {
+                S.time.logFlow("Reset Purchase: Mua hạt giống chưa thành công (sẽ tự động thử lại sau)...", {});
+              }
+            } catch (e) {
+              S.time.logFlow("Reset Purchase: Lỗi khi tự mua hạt giống: " + e.message, {});
+            } finally {
+              runtime.busy = false;
+            }
+            return;
+          }
+        }
+      }
+    }
 
     const needPauseBetty =
       typeof S.cropDom?.isBettySeedShopDialogOpen === "function" && S.cropDom.isBettySeedShopDialogOpen();
@@ -735,45 +780,7 @@
   const HEARTBEAT_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
   let heartbeatStartTime = S.time.now();
 
-  function getNextResetTime() {
-    const now = new Date();
-    
-    const t7am = new Date(now);
-    t7am.setHours(7, 0, 0, 0);
-    
-    const t7pm = new Date(now);
-    t7pm.setHours(19, 0, 0, 0);
-    
-    const times = [t7am.getTime(), t7pm.getTime()];
-    times.sort((a, b) => a - b);
-    
-    for (const t of times) {
-      if (t > now.getTime()) {
-        return t;
-      }
-    }
-    
-    // Nếu cả 2 mốc hôm nay đều đã qua, mốc tiếp theo là 7h sáng ngày mai
-    const nextDay7am = new Date(now);
-    nextDay7am.setDate(nextDay7am.getDate() + 1);
-    nextDay7am.setHours(7, 0, 0, 0);
-    return nextDay7am.getTime();
-  }
-  let nextReloadTime = getNextResetTime();
-
   function triggerHeartbeat() {
-    const t = S.time.now();
-    if (t >= nextReloadTime) {
-      S.time.logFlow("Heartbeat: Đã đến giờ reset (7h sáng / 19h tối), tiến hành reload trang và chạy mua đồ tự động", {});
-      console.log("[Heartbeat] Đã đến giờ reset, reload trang...");
-      try {
-        localStorage.setItem("sfl_run_reset_purchase_flow", "true");
-      } catch (e) {
-        // ignore
-      }
-      window.location.reload();
-      return;
-    }
 
     S.time.logFlow("Heartbeat: Đập mỗi 3 phút — Khởi động lại tất cả các luồng!", {});
     console.log("[Heartbeat] Đập mỗi 3 phút: Khởi động lại tất cả các luồng!");

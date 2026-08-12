@@ -1125,7 +1125,7 @@
 
   /** Tìm nút "Batch Buy" trong workbench dialog (nằm dưới lưới Land Tools). */
   function findBatchBuyButton() {
-    for (const btn of queryAllGameDocs("button,[role='button']")) {
+    for (const btn of queryAllGameDocs("button")) {
       if (!d.isVisible(btn) || btn.disabled) continue;
       const t = (btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
       if (t === "batch buy" || /^batch\s*buy$/i.test(t)) return btn;
@@ -1321,24 +1321,54 @@
     let buttons;
     try {
       buttons = dialogRoot
-        ? Array.from(dialogRoot.querySelectorAll("button,[role='button']"))
-        : queryAllGameDocs("button,[role='button']");
+        ? Array.from(dialogRoot.querySelectorAll("button"))
+        : queryAllGameDocs("button");
     } catch (_e) {
-      buttons = queryAllGameDocs("button,[role='button']");
+      buttons = queryAllGameDocs("button");
     }
     // Exact match trước
     for (const btn of buttons) {
       if (!d.isVisible(btn) || btn.disabled) continue;
       const t = (btn.textContent || "").replace(/\s+/g, " ").trim();
-      if (/^(confirm|xác\s*nhận|buy all|mua\s*tất\s*cả|purchase)$/i.test(t)) return btn;
+      if (/^(confirm|xác\s*nhận|buy all|mua\s*tất\s*cả|purchase|batch buy|buy)$/i.test(t)) return btn;
     }
     // Partial match
     for (const btn of buttons) {
       if (!d.isVisible(btn) || btn.disabled) continue;
       const t = (btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-      if (t.includes("confirm") || t.includes("xác nhận")) return btn;
+      if (t.includes("confirm") || t.includes("xác nhận") || t.includes("batch buy") || t.includes("buy all")) return btn;
     }
     return null;
+  }
+
+  /** Xác nhận click Batch Buy lần thứ 2 trong modal xác nhận nếu có. */
+  async function confirmBatchBuySecondClick() {
+    logBuyStep("Batch Buy: Đang chờ modal xác nhận thứ 2 xuất hiện...", {});
+    
+    // Quét tìm button trong tối đa 2.5 giây (10 attempts * 250ms)
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await sleep(250);
+      
+      const buttons = queryAllGameDocs("button");
+      // Quét ngược từ cuối DOM lên (ưu tiên modal z-index cao nằm sau cùng trong HTML)
+      for (let i = buttons.length - 1; i >= 0; i--) {
+        const btn = buttons[i];
+        if (!d.isVisible(btn) || btn.disabled) continue;
+        
+        const text = (btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        
+        // Modal xác nhận lần 2 của game thường có text "batch buy", "confirm", "buy", "xác nhận"
+        if (text === "batch buy" || text === "confirm" || text === "buy" || text === "xác nhận") {
+          logBuyStep(`Batch Buy: Đã tìm thấy nút xác nhận thứ 2: "${btn.textContent || ""}"`, {});
+          d.clickAtCenter(btn);
+          await sleep(rand(800, 1400));
+          return true;
+        }
+      }
+    }
+    
+    logBuyStep("Batch Buy: Không thấy hoặc không cần nút xác nhận thứ 2.", {});
+    return false;
   }
 
   /** Đóng Batch Buy dialog bằng nút X hoặc Escape. */
@@ -1454,9 +1484,12 @@
     }
 
     d.clickAtCenter(confirmBtn);
-    logBuyStep("Batch Buy: đã click Confirm — xong!", { toolType });
+    logBuyStep("Batch Buy: đã click Confirm lần 1 — chờ modal xác nhận lần 2...", { toolType });
     await uiJitter();
-    await sleep(rand(320, 540));
+    await sleep(rand(400, 700));
+    
+    // Click xác nhận lần 2
+    await confirmBatchBuySecondClick();
     return true;
   }
 
@@ -1729,7 +1762,7 @@
   async function processBuyToolQueue() {
     if (!runtime.settings.autoBuyTools) {
       if (runtime.buyToolQueue.length > 0) {
-        logFlow("Không xử lý hàng mua tool: tắt «Tự mua công cụ (rìu + cuốc)» trong popup extension", {
+        logFlow("Không xử lý hàng mua tool: tắt «Auto mua công cụ + hạt giống» trong popup extension", {
           queueSize: runtime.buyToolQueue.length,
           head: runtime.buyToolQueue[0],
         });
@@ -1944,10 +1977,10 @@
       const bench = findWorkbenchClickable();
       if (!bench) {
         logBuyStep("Batch Buy All: không thấy tile Workbench", {});
-        return false;
+        return false; // Chưa mở được panel, cho phép thử lại
       }
       openWorkbenchClick(bench);
-      await sleep(rand(400, 600));
+      await sleep(rand(600, 1000));
     }
 
     // 2. Click "Batch Buy"
@@ -1955,65 +1988,47 @@
       const batchBtn = findBatchBuyButton();
       if (!batchBtn) {
         logBuyStep("Batch Buy All: không thấy nút 'Batch Buy' trong panel", {});
-        return false;
+        await closeToolShopPanel();
+        return false; // Chưa mở được dialog, cho phép thử lại
       }
       d.clickAtCenter(batchBtn);
       for (let w = 0; w < 12; w += 1) {
-        await sleep(200);
+        await sleep(250);
         if (isBatchBuyDialogOpen()) break;
       }
     }
 
     if (!isBatchBuyDialogOpen()) {
       logBuyStep("Batch Buy All: dialog không mở được", {});
-      return false;
+      await closeToolShopPanel();
+      return false; // Chưa mở được dialog, cho phép thử lại
     }
 
     const dlgRoot = findBatchBuyDialogRoot();
-    const tools = ["axe", "wood_pickaxe", "stone_pickaxe", "iron_pickaxe", "gold_pickaxe"];
-    let anySet = false;
 
-    // 3. Click Max cho tất cả các loại tool
-    for (const toolType of tools) {
-      const row = findBatchBuyToolRow(toolType, dlgRoot);
-      if (row && isBatchBuyRowAvailable(row)) {
-        const setOk = await clickBatchBuyMaxInRow(row);
-        if (setOk) {
-          anySet = true;
-          logBuyStep(`Batch Buy All: đã chọn Max cho ${toolType}`, {});
-        } else {
-          const fbOk = await setBatchBuyQuantityFallback(row);
-          if (fbOk) {
-            anySet = true;
-            logBuyStep(`Batch Buy All: đã set fallback 50%/1 cho ${toolType}`, {});
-          }
-        }
-      }
-    }
-
-    if (!anySet) {
-      logBuyStep("Batch Buy All: không có công cụ nào khả dụng để mua", {});
-      await closeBatchBuyDialog();
-      await closeToolShopPanel();
-      return false;
-    }
-
-    // 4. Click Confirm
+    // 3. Click Confirm (trong dialog SFL tự chọn Max và tick sẵn tất cả công cụ)
     const confirmBtn = findBatchBuyConfirmButton(dlgRoot) || findBatchBuyConfirmButton(null);
     if (!confirmBtn) {
-      logBuyStep("Batch Buy All: không tìm thấy nút Confirm", {});
+      logBuyStep("Batch Buy All: nút Confirm/Batch Buy bị disabled hoặc không tìm thấy (có thể đã đủ dụng cụ hoặc hết coins)", {});
+      await sleep(rand(600, 1000));
       await closeBatchBuyDialog();
+      await sleep(rand(500, 800));
       await closeToolShopPanel();
-      return false;
+      return true; // Coi như đã hoàn thành việc check (không cần buy gì)
     }
 
+    await sleep(rand(1200, 2200)); // Trì hoãn trước khi click Confirm để giống người
     d.clickAtCenter(confirmBtn);
-    logBuyStep("Batch Buy All: đã bấm nút Confirm", {});
+    logBuyStep("Batch Buy All: đã bấm nút Confirm/Batch Buy lần 1, đang chờ modal xác nhận lần 2...", {});
     await uiJitter();
     await sleep(rand(500, 800));
 
+    // Click xác nhận lần 2
+    await confirmBatchBuySecondClick();
+
     // Đóng dialog
     await closeBatchBuyDialog();
+    await sleep(rand(600, 900));
     await closeToolShopPanel();
     return true;
   }

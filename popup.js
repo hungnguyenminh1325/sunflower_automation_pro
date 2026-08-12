@@ -27,13 +27,6 @@ const ids = {
   mineTargetCrimstone: document.getElementById("mineTargetCrimstone"),
   mineTargetSunstone: document.getElementById("mineTargetSunstone"),
   statusText: document.getElementById("statusText"),
-  statusBadge: document.getElementById("statusBadge"),
-  strikeLearnAutoChop: document.getElementById("strikeLearnAutoChop"),
-  strikeLearnAutoMine: document.getElementById("strikeLearnAutoMine"),
-  chopStrikes: document.getElementById("chopStrikes"),
-  mineStrikes: document.getElementById("mineStrikes"),
-  resetStrikeLearn: document.getElementById("resetStrikeLearn"),
-  resetMineStrikeLearn: document.getElementById("resetMineStrikeLearn"),
 };
 
 function setStatus(text, tone = "neutral") {
@@ -56,11 +49,7 @@ function setStatus(text, tone = "neutral") {
 
 function setStatusDetails() {}
 
-function readStrikeInput(el, fallback = 3) {
-  const n = parseInt(String(el?.value ?? ""), 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(1, Math.min(8, n));
-}
+
 
 function getGameTab() {
   return new Promise((resolve) => {
@@ -170,10 +159,6 @@ function readUiSettings() {
     mineTargetGold: !!ids.mineTargetGold?.checked,
     mineTargetCrimstone: !!ids.mineTargetCrimstone?.checked,
     mineTargetSunstone: !!ids.mineTargetSunstone?.checked,
-    strikeLearnAutoChop: !!ids.strikeLearnAutoChop?.checked,
-    strikeLearnAutoMine: !!ids.strikeLearnAutoMine?.checked,
-    chopStrikes: readStrikeInput(ids.chopStrikes, 3),
-    mineStrikes: readStrikeInput(ids.mineStrikes, 3),
   };
 }
 
@@ -207,15 +192,6 @@ function renderSettings(settings) {
   if (ids.mineTargetGold) ids.mineTargetGold.checked = settings.mineTargetGold !== false;
   if (ids.mineTargetCrimstone) ids.mineTargetCrimstone.checked = settings.mineTargetCrimstone !== false;
   if (ids.mineTargetSunstone) ids.mineTargetSunstone.checked = settings.mineTargetSunstone !== false;
-  if (ids.strikeLearnAutoChop) {
-    ids.strikeLearnAutoChop.checked = settings.strikeLearnAutoChop !== false;
-  }
-  if (ids.strikeLearnAutoMine) {
-    ids.strikeLearnAutoMine.checked = settings.strikeLearnAutoMine !== false;
-  }
-  const clampS = (v) => readStrikeInput({ value: v }, 3);
-  if (ids.chopStrikes) ids.chopStrikes.value = String(clampS(settings.chopStrikes));
-  if (ids.mineStrikes) ids.mineStrikes.value = String(clampS(settings.mineStrikes));
 }
 
 /**
@@ -316,12 +292,7 @@ const autoSaveTargets = [
   ids.mineTargetStone,
   ids.mineTargetIron,
   ids.mineTargetGold,
-  ids.mineTargetCrimstone,
   ids.mineTargetSunstone,
-  ids.strikeLearnAutoChop,
-  ids.strikeLearnAutoMine,
-  ids.chopStrikes,
-  ids.mineStrikes,
 ];
 
 for (const node of autoSaveTargets) {
@@ -332,26 +303,7 @@ for (const node of autoSaveTargets) {
   });
 }
 
-ids.resetStrikeLearn?.addEventListener("click", async () => {
-  const tab = await getGameTab();
-  if (!tab?.id) {
-    setStatus("Hãy mở sunflower-land.com/play trước.", "warn");
-    return;
-  }
-  const result = await send(tab.id, {
-    type: "SFL_UI_UPDATE_SETTINGS",
-    settings: {
-      chopStrikesLearned: false,
-    },
-  });
-  if (!result.ok || !result.data?.ok) {
-    setStatus("Không xóa được bộ nhớ học.", "warn");
-    return;
-  }
-  if (result.data.settings) renderSettings(result.data.settings);
-  setStatus("Đã xóa bộ nhớ học cây — lần tới sẽ tự học lại (nếu bật).", "live");
-  await refreshStatus({ syncForm: false });
-});
+
 
 ids.resetCaptchaReloadSkipCount?.addEventListener("click", async () => {
   const tab = await getGameTab();
@@ -369,26 +321,7 @@ ids.resetCaptchaReloadSkipCount?.addEventListener("click", async () => {
   await refreshStatus({ syncForm: false });
 });
 
-ids.resetMineStrikeLearn?.addEventListener("click", async () => {
-  const tab = await getGameTab();
-  if (!tab?.id) {
-    setStatus("Hãy mở sunflower-land.com/play trước.", "warn");
-    return;
-  }
-  const result = await send(tab.id, {
-    type: "SFL_UI_UPDATE_SETTINGS",
-    settings: {
-      mineStrikesLearned: false,
-    },
-  });
-  if (!result.ok || !result.data?.ok) {
-    setStatus("Không xóa được bộ nhớ học đá.", "warn");
-    return;
-  }
-  if (result.data.settings) renderSettings(result.data.settings);
-  setStatus("Đã xóa bộ nhớ học đá — lần tới sẽ tự học lại (nếu bật).", "live");
-  await refreshStatus({ syncForm: false });
-});
+
 
 refreshStatus({ syncForm: true });
 setInterval(() => refreshStatus({ syncForm: false }), 1000);

@@ -4144,7 +4144,7 @@
    * Không giới hạn số lượng theo ô đất trống, mua tối đa stock của cửa hàng trong tầm coins.
    */
   async function buyAllPossibleSeedsViaEvent() {
-    if (!S.gameBridge?.isReady) return false;
+    if (!S.gameBridge?.isReady) return { ok: false };
     logFlow("Reset Purchase: Bắt đầu mua hết hạt giống có thể mua...", {});
 
     try {
@@ -4153,7 +4153,7 @@
     await sleep(400);
 
     const st = S.gameBridge.getLatestState();
-    if (!st) return false;
+    if (!st) return { ok: false };
 
     const seasonKey = normalizeSeasonName(st.season);
     let coins = typeof st.coins === "number" && Number.isFinite(st.coins) ? st.coins : 0;
@@ -4205,7 +4205,7 @@
     }
 
     logFlow("Reset Purchase: Hoàn tất mua hạt giống gối đầu!", { anyBought });
-    return anyBought;
+    return { ok: true, anyBought };
   }
 
   S.cropDom = {

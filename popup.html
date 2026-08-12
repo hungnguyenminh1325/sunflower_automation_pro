@@ -34,9 +34,8 @@
 
         <label class="setting-row">
           <span class="setting-copy">
-            <strong>Tự mua công cụ (rìu + cuốc, Workbench)</strong>
-            <small
-              >Một công tắc cho cả cây và đá: hết rìu hoặc hết pickaxe thì bot xếp hàng → mở bàn Blacksmith → chọn icon tool → Craft → đóng X.</small>
+            <strong>Auto mua công cụ + hạt giống</strong>
+            <small>Tự động mua tất cả rìu, cuốc tại Blacksmith và hạt giống mùa hiện tại khi khởi động app. Đồng thời xếp hàng mua thêm công cụ khi làm việc thiếu.</small>
           </span>
           <span class="toggle">
             <input id="autoBuyTools" type="checkbox" />
@@ -99,8 +98,8 @@
           </span>
         </label>
 
-        <div class="strike-grid" style="margin: -8px 0 12px">
-          <label class="strike-field">
+        <div class="input-grid" style="margin: -8px 0 12px">
+          <label class="input-field">
             <span>Ưu tiên món nấu (tùy chọn)</span>
             <input
               id="cookPreferredRecipe"
@@ -169,8 +168,8 @@
             <span class="toggle-ui"></span>
           </span>
         </label>
-        <div class="strike-grid" style="margin: -8px 0 12px">
-          <label class="strike-field">
+        <div class="input-grid" style="margin: -8px 0 12px">
+          <label class="input-field">
             <span>Tên hạt</span>
             <input id="cropDomSeedName" type="text" maxlength="80" spellcheck="false" placeholder="Trống = Auto (theo mùa)" />
           </label>
@@ -247,55 +246,6 @@
           </label>
         </div>
 
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Strike</p>
-            <h2>Số nhịp đập (lưu như cài đặt)</h2>
-          </div>
-        </div>
-        <p class="setting-hint">
-          Lần đầu bot tự thử đến khi cây xong (tối đa 8 nhịp), rồi ghi số nhịp. Bạn có thể chỉnh tay 1–8.
-          <strong>Ô số «Đá»</strong> là <strong>số nhịp đập mỗi ô</strong> (1–8), <em>không phải</em> số cục đá trên farm.
-        </p>
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Tự học số nhịp chặt cây</strong>
-            <small>Một lần cho cả cây.</small>
-          </span>
-          <span class="toggle">
-            <input id="strikeLearnAutoChop" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
-        </label>
-        <div class="strike-grid">
-          <label class="strike-field">
-            <span>Cây</span>
-            <input id="chopStrikes" type="number" min="1" max="8" step="1" value="3" />
-          </label>
-          <label class="strike-field">
-            <span>Đá</span>
-            <input id="mineStrikes" type="number" min="1" max="8" step="1" value="3" />
-          </label>
-        </div>
-        <label class="setting-row">
-          <span class="setting-copy">
-            <strong>Tự học số nhịp đào đá</strong>
-            <small>Một lần cho mỗi ô đá (giống cây).</small>
-          </span>
-          <span class="toggle">
-            <input id="strikeLearnAutoMine" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
-        </label>
-        <button type="button" id="resetStrikeLearn" class="ghost-button">
-          Học lại cây (xóa bộ nhớ đã học)
-        </button>
-        <button type="button" id="resetMineStrikeLearn" class="ghost-button">
-          Học lại đá (xóa bộ nhớ đã học)
-        </button>
       </section>
     </main>
 

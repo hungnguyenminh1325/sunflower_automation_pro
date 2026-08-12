@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sunflower Land UI Automation · v1.0.0</title>
+    <title>Sunflower Land UI Automation · v2.0.0</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,7 +12,7 @@
         <div class="hero-copy">
           <p class="eyebrow">Sunflower Land</p>
           <h1>Sunflower Land UI Automation</h1>
-          <p class="hero-text">v1.0.0 — UI-first automation for Sunflower Land: chop, mine, farm, workbench, and related flows.</p>
+          <p class="hero-text">v2.0.0 — UI-first automation for Sunflower Land: chop, mine, farm, workbench, and related flows.</p>
         </div>
         <label class="power-switch" aria-label="Bật hoặc tắt toàn bộ">
           <input id="masterEnabled" type="checkbox" checked />
@@ -296,112 +296,6 @@
         <button type="button" id="resetMineStrikeLearn" class="ghost-button">
           Học lại đá (xóa bộ nhớ đã học)
         </button>
-      </section>
-
-      <section class="status-panel">
-        <div class="status-top">
-          <div>
-            <p class="panel-kicker">Runtime</p>
-            <h2>Điều phối luồng</h2>
-          </div>
-          <span id="statusBadge" class="status-badge">Đang tải</span>
-        </div>
-
-        <div class="flow-grid">
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="resourceFlowName">Luồng tài nguyên</strong>
-              <span id="resourceFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="resourceFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="resourceFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="resourceFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="resourceFlowPercent" class="flow-percent">0%</div>
-            <div id="resourceFlowQueue" class="flow-queue">Hàng chờ mua tool: trống</div>
-          </div>
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="oreFlowName">Luồng đá / quặng</strong>
-              <span id="oreFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="oreFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="oreFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="oreFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="oreFlowPercent" class="flow-percent">0%</div>
-            <div id="oreFlowQueue" class="flow-queue">Hàng chờ mua tool: trống</div>
-          </div>
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="mushroomFlowName">Luồng nấm</strong>
-              <span id="mushroomFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="mushroomFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="mushroomFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="mushroomFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="mushroomFlowPercent" class="flow-percent">0%</div>
-            <div id="mushroomFlowQueue" class="flow-queue">—</div>
-          </div>
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="cookFlowName">Luồng nấu ăn</strong>
-              <span id="cookFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="cookFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="cookFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="cookFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="cookFlowPercent" class="flow-percent">0%</div>
-            <div id="cookFlowQueue" class="flow-queue">Thu + nấu qua bridge — chờ theo giờ chín món</div>
-          </div>
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="fruitTreeFlowName">Luồng trồng + thu hoạch cây ăn quả</strong>
-              <span id="fruitTreeFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="fruitTreeFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="fruitTreeFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="fruitTreeFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="fruitTreeFlowPercent" class="flow-percent">0%</div>
-            <div id="fruitTreeFlowQueue" class="flow-queue">—</div>
-          </div>
-          <div class="flow-card">
-            <div class="flow-head">
-              <strong id="honeyFlowName">Luồng thu hoạch hoa, mật ong</strong>
-              <span id="honeyFlowState" class="flow-state">--</span>
-            </div>
-            <div class="flow-meta">
-              <span>Bắt đầu: <b id="honeyFlowStart">--</b></span>
-              <span>Kế tiếp: <b id="honeyFlowNext">--</b></span>
-            </div>
-            <div class="flow-progress-track">
-              <div id="honeyFlowProgress" class="flow-progress-fill"></div>
-            </div>
-            <div id="honeyFlowPercent" class="flow-percent">0%</div>
-            <div id="honeyFlowQueue" class="flow-queue">—</div>
-          </div>
-
-        </div>
-
-        <p id="statusText" class="status-note">Đang tải dữ liệu từ tab game...</p>
       </section>
     </main>
 

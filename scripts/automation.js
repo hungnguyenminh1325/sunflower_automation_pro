@@ -128,44 +128,17 @@
     return false;
   }
 
-  async function runResetPurchaseFlow() {
-    runtime.busy = true;
-    try {
-      S.time.logFlow("Reset Purchase: Bắt đầu luồng mua đồ tự động 12h...", {});
-      
-      // 1. Mua tất cả công cụ (Axe + Pickaxes) bằng Batch Buy
-      if (typeof S.workbench?.buyAllToolsBatch === "function") {
-        await S.workbench.buyAllToolsBatch();
-      } else {
-        S.time.logFlow("Reset Purchase: Không thấy hàm S.workbench.buyAllToolsBatch", {});
-      }
-      
-      // 2. Mua tất cả hạt giống mùa hiện tại bằng event
-      if (typeof S.cropDom?.buyAllPossibleSeedsViaEvent === "function") {
-        await S.cropDom.buyAllPossibleSeedsViaEvent();
-      } else {
-        S.time.logFlow("Reset Purchase: Không thấy hàm S.cropDom.buyAllPossibleSeedsViaEvent", {});
-      }
-      
-      S.time.logFlow("Reset Purchase: Đã hoàn thành toàn bộ luồng mua đồ 12h!", {});
-      try {
-        localStorage.setItem("sfl_run_reset_purchase_flow", "false");
-      } catch (e) {}
-    } catch (e) {
-      console.error("[Reset Purchase] Error:", e);
-      S.time.logFlow("Reset Purchase: Lỗi khi chạy luồng mua đồ 12h: " + e.message, {});
-    } finally {
-      runtime.busy = false;
-    }
-  }
-
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
 
     // ── Kích hoạt luồng mua đồ 12h nếu cờ được set ──
     try {
       if (localStorage.getItem("sfl_run_reset_purchase_flow") === "true") {
-        await runResetPurchaseFlow();
+        if (typeof S.resetPurchase?.runResetPurchaseFlow === "function") {
+          await S.resetPurchase.runResetPurchaseFlow();
+        } else {
+          S.time.logFlow("Reset Purchase: Không tìm thấy hàm S.resetPurchase.runResetPurchaseFlow", {});
+        }
         return;
       }
     } catch (e) { /* ignore */ }

@@ -36,150 +36,30 @@ const ids = {
   resetMineStrikeLearn: document.getElementById("resetMineStrikeLearn"),
 };
 
-const treeFlowEls = {
-  name: document.getElementById("resourceFlowName"),
-  state: document.getElementById("resourceFlowState"),
-  start: document.getElementById("resourceFlowStart"),
-  next: document.getElementById("resourceFlowNext"),
-  progress: document.getElementById("resourceFlowProgress"),
-  percent: document.getElementById("resourceFlowPercent"),
-  queue: document.getElementById("resourceFlowQueue"),
-};
-
-const oreFlowEls = {
-  name: document.getElementById("oreFlowName"),
-  state: document.getElementById("oreFlowState"),
-  start: document.getElementById("oreFlowStart"),
-  next: document.getElementById("oreFlowNext"),
-  progress: document.getElementById("oreFlowProgress"),
-  percent: document.getElementById("oreFlowPercent"),
-  queue: document.getElementById("oreFlowQueue"),
-};
-
-const mushroomFlowEls = {
-  name: document.getElementById("mushroomFlowName"),
-  state: document.getElementById("mushroomFlowState"),
-  start: document.getElementById("mushroomFlowStart"),
-  next: document.getElementById("mushroomFlowNext"),
-  progress: document.getElementById("mushroomFlowProgress"),
-  percent: document.getElementById("mushroomFlowPercent"),
-  queue: document.getElementById("mushroomFlowQueue"),
-};
-
-const cookFlowEls = {
-  name: document.getElementById("cookFlowName"),
-  state: document.getElementById("cookFlowState"),
-  start: document.getElementById("cookFlowStart"),
-  next: document.getElementById("cookFlowNext"),
-  progress: document.getElementById("cookFlowProgress"),
-  percent: document.getElementById("cookFlowPercent"),
-  queue: document.getElementById("cookFlowQueue"),
-};
-
-const fruitTreeFlowEls = {
-  name: document.getElementById("fruitTreeFlowName"),
-  state: document.getElementById("fruitTreeFlowState"),
-  start: document.getElementById("fruitTreeFlowStart"),
-  next: document.getElementById("fruitTreeFlowNext"),
-  progress: document.getElementById("fruitTreeFlowProgress"),
-  percent: document.getElementById("fruitTreeFlowPercent"),
-  queue: document.getElementById("fruitTreeFlowQueue"),
-};
-
-const honeyFlowEls = {
-  name: document.getElementById("honeyFlowName"),
-  state: document.getElementById("honeyFlowState"),
-  start: document.getElementById("honeyFlowStart"),
-  next: document.getElementById("honeyFlowNext"),
-  progress: document.getElementById("honeyFlowProgress"),
-  percent: document.getElementById("honeyFlowPercent"),
-  queue: document.getElementById("honeyFlowQueue"),
-};
-
-
 function setStatus(text, tone = "neutral") {
-  ids.statusText.textContent = text;
-  ids.statusBadge.className = "status-badge";
-
-  if (tone === "live") {
-    ids.statusBadge.textContent = "Đang chạy";
-    ids.statusBadge.classList.add("live");
-    return;
+  if (ids.statusText) ids.statusText.textContent = text;
+  if (ids.statusBadge) {
+    ids.statusBadge.className = "status-badge";
+    if (tone === "live") {
+      ids.statusBadge.textContent = "Đang chạy";
+      ids.statusBadge.classList.add("live");
+      return;
+    }
+    if (tone === "warn") {
+      ids.statusBadge.textContent = "Cần kiểm tra";
+      ids.statusBadge.classList.add("warn");
+      return;
+    }
+    ids.statusBadge.textContent = "Đang tải";
   }
-
-  if (tone === "warn") {
-    ids.statusBadge.textContent = "Cần kiểm tra";
-    ids.statusBadge.classList.add("warn");
-    return;
-  }
-
-  ids.statusBadge.textContent = "Đang tải";
 }
 
-function setStatusDetails({
-  flows = null,
-} = {}) {
-  renderFlowCard(flows?.resource, treeFlowEls);
-  renderFlowCard(flows?.ore, oreFlowEls);
-  renderFlowCard(flows?.mushroom, mushroomFlowEls);
-  renderFlowCard(flows?.cook, cookFlowEls);
-  renderFlowCard(flows?.fruitTree, fruitTreeFlowEls);
-  renderFlowCard(flows?.honey, honeyFlowEls);
-}
-
-function formatTime(value) {
-  if (!Number.isFinite(value) || value <= 0) return "--";
-  return new Date(value).toLocaleTimeString("vi-VN", { hour12: false });
-}
-
-function clampPercent(value) {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
-}
+function setStatusDetails() {}
 
 function readStrikeInput(el, fallback = 3) {
   const n = parseInt(String(el?.value ?? ""), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(1, Math.min(8, n));
-}
-
-function renderFlowCard(flow, els) {
-  if (!els?.name) return;
-  els.name.textContent = flow?.name || "--";
-  els.state.textContent = flow?.state || "--";
-  els.start.textContent = formatTime(Number(flow?.startedAt || 0));
-  els.next.textContent = formatTime(Number(flow?.nextAt || 0));
-  if (flow?.queueCaption) {
-    els.queue.textContent = flow.queueCaption;
-  } else if (flow?.noToolQueue) {
-    els.queue.textContent = "Chu kỳ 2 giờ — không dùng hàng chờ tool";
-  } else {
-    els.queue.textContent = flow?.queueSize
-      ? `Hàng chờ mua tool: ${flow.queueLabel || flow.queueSize}`
-      : "Hàng chờ mua tool: trống";
-  }
-
-  if (!flow?.enabled) {
-    els.progress.style.width = "0%";
-    els.percent.textContent = "0%";
-    return;
-  }
-
-  const startedAt = Number(flow?.startedAt || 0);
-  const nextAt = Number(flow?.nextAt || 0);
-  const intervalMs = Number(flow?.intervalMs || 0);
-  const nowMs = Date.now();
-  let progress = 0;
-
-  if (startedAt > 0 && nextAt > startedAt) {
-    progress = ((nowMs - startedAt) / (nextAt - startedAt)) * 100;
-  } else if (intervalMs > 0 && nextAt > 0) {
-    progress = ((intervalMs - Math.max(0, nextAt - nowMs)) / intervalMs) * 100;
-  }
-
-  const normalized = clampPercent(progress);
-  els.progress.style.width = `${normalized}%`;
-  els.percent.textContent = `${Math.round(normalized)}%`;
 }
 
 function getGameTab() {
@@ -218,6 +98,7 @@ const CONTENT_SCRIPT_FILES = [
   "scripts/flows/petal-collect-dom.js",
   "scripts/flows/fruit-tree.js",
   "scripts/flows/honey.js",
+  "scripts/flows/reset-purchase.js",
   "scripts/automation.js",
   "scripts/bootstrap.js",
 ];

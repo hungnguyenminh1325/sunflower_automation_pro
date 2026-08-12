@@ -1373,6 +1373,9 @@
       if (box.classList.contains("cursor-not-allowed")) return true;
       try {
         if (box.querySelector(".bg-overlay-white")) return true;
+        // Kiểm tra xem ô chứa có ảnh ổ khóa (lock icon) nào khác ảnh chính không
+        const lockImg = box.querySelector('img[src*="lock"]');
+        if (lockImg && lockImg !== img) return true;
       } catch (_e) {
         // ignore
       }
@@ -1383,7 +1386,11 @@
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
-      if (t.length > 0 && t.length < 56 && /\brestock\b/.test(t)) return true;
+      if (t.length > 0 && t.length < 56 && /\brestock|locked|lacking|yêu cầu\b/.test(t)) return true;
+      try {
+        const lockImg = el.querySelector('img[src*="lock"]');
+        if (lockImg && lockImg !== img) return true;
+      } catch (_e) { }
       el = el.parentElement;
     }
     return false;
@@ -4240,16 +4247,18 @@
 
     const seedsToBuy = [...cropSeeds, ...extraSeeds];
 
-    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
+    // Lọc và in ra màn hình danh sách hạt giống thực tế có thể mua trong mùa hiện tại (tồn tại trong stock)
+    const activeCrops = cropSeeds.filter(s => stock[s] !== undefined);
+    const activeFruits = FRUIT_SAPLINGS_DOM.filter(s => stock[s] !== undefined);
+    const activeFlowers = FLOWER_SEEDS_DOM.filter(s => stock[s] !== undefined);
 
-    // Debug log kiểm tra tồn kho cây ăn quả
-    const fruitStockDetails = {};
-    for (const fs of FRUIT_SAPLINGS_DOM) {
-      if (stock[fs] !== undefined) {
-        fruitStockDetails[fs] = stock[fs];
-      }
-    }
-    logFlow("Debug Reset Purchase: Tồn kho cây ăn quả nhận diện được", fruitStockDetails);
+    logFlow(`=== DANH SÁCH HẠT MUA THEO MÙA (${seasonKey.toUpperCase()}) ===`, {});
+    logFlow(`-> Hạt ruộng đúng mùa: ` + (activeCrops.length > 0 ? activeCrops.join(", ") : "Không có"), {});
+    logFlow(`-> Cây quả đúng mùa: ` + (activeFruits.length > 0 ? activeFruits.join(", ") : "Không có"), {});
+    logFlow(`-> Hạt hoa đúng mùa: ` + (activeFlowers.length > 0 ? activeFlowers.join(", ") : "Không có"), {});
+    logFlow(`===================================================`, {});
+
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
 
     let anyBought = false;
     for (const seed of seedsToBuy) {

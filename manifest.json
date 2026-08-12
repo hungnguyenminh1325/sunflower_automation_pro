@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sunflower Land UI Automation",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "UI-first automation for Sunflower Land: chop, mine, farm, workbench tools, mushrooms. Optional in-page state bridge. Unofficial companion.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
@@ -51,6 +51,6 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Sunflower Land UI Automation · v2.0.0"
+    "default_title": "Sunflower Land UI Automation · v2.1.0"
   }
 }

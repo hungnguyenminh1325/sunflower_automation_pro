@@ -127,6 +127,17 @@
     "Kale Seed": 7,
     "Artichoke Seed": 7,
     "Barley Seed": 10,
+    "Apple Sapling": 0.25,
+    "Orange Sapling": 0.38,
+    "Blueberry Seeds": 0.05,
+    "Lemon Sapling": 0.5,
+    "Pear Sapling": 0.63,
+    "Plum Sapling": 0.75,
+    "Grape Sapling": 1.0,
+    "Banana Sapling": 1.5,
+    "Sunpetal Seed": 0.04,
+    "Bloom Seed": 0.08,
+    "Lily Seed": 0.15,
   };
 
   /** Thứ tự ưu tiên mua hạt — rẻ nhất / phổ biến nhất trước. */
@@ -137,6 +148,25 @@
     "Cauliflower Seed", "Parsnip Seed", "Eggplant Seed", "Corn Seed",
     "Onion Seed", "Turnip Seed", "Radish Seed", "Wheat Seed",
     "Kale Seed", "Artichoke Seed", "Barley Seed",
+  ];
+
+  /** Hạt giống cây ăn quả (Fruit) */
+  const FRUIT_SAPLINGS_DOM = [
+    "Apple Sapling",
+    "Orange Sapling",
+    "Blueberry Seeds",
+    "Lemon Sapling",
+    "Pear Sapling",
+    "Plum Sapling",
+    "Grape Sapling",
+    "Banana Sapling",
+  ];
+
+  /** Hạt giống hoa (Flower) */
+  const FLOWER_SEEDS_DOM = [
+    "Sunpetal Seed",
+    "Bloom Seed",
+    "Lily Seed",
   ];
 
   /** Hạt nhà kính — không mua vào plot thường. */
@@ -1658,12 +1688,7 @@
   /** Giỏ inventory: một cú bấm — double-click dễ toggle 2 lần về ô mặc định. */
   async function clickCropInventoryBrownOnce(el) {
     if (!el || !d.isVisible(el)) return;
-    try {
-      if (typeof el.click === "function") el.click();
-    } catch (_e) {
-      // ignore
-    }
-    d.nativeClickClose(el) || d.clickAtCenter(el);
+    d.clickAtCenter(el);
     await sleep(rand(120, 240));
   }
 
@@ -1712,16 +1737,12 @@
     let el = targetSeedImg;
     for (let depth = 0; depth < 16 && el; depth += 1) {
       if (d.isVisible(el) && d.isClickablePointerEventsOk(el)) {
-        try {
-          if (typeof el.click === "function") el.click();
-        } catch (_e) {
-          // ignore
-        }
-        if (d.nativeClickClose(el) || d.clickAtCenter(el)) return;
+        d.clickAtCenter(el);
+        return;
       }
       el = el.parentElement;
     }
-    d.nativeClickClose(targetSeedImg) || d.clickAtCenter(targetSeedImg);
+    d.clickAtCenter(targetSeedImg);
   }
 
   async function closeInventorySeedStripIfOpen() {
@@ -4161,13 +4182,16 @@
     const allowed = SEASONAL_CROP_PLOT_SEEDS[seasonKey] || SEASONAL_CROP_PLOT_SEEDS.spring;
     const allowedSet = new Set(allowed);
 
-    // Lọc các hạt thuộc mùa hiện tại và sắp xếp theo thứ tự mua
-    const seedsToBuy = SEED_BUY_ORDER_DOM.filter((s) => {
+    // Lọc các hạt ruộng thuộc mùa hiện tại
+    const cropSeeds = SEED_BUY_ORDER_DOM.filter((s) => {
       if (GREENHOUSE_SEED_NAMES_DOM.includes(s)) return false;
       return allowedSet.has(s);
     });
 
-    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins });
+    // Gom cả hạt giống cây ăn quả (Fruit Saplings) và hoa (Flower Seeds)
+    const seedsToBuy = [...cropSeeds, ...FRUIT_SAPLINGS_DOM, ...FLOWER_SEEDS_DOM];
+
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt (gồm cả Fruit/Flower) cần check stock.`, { coins });
 
     let anyBought = false;
     for (const seed of seedsToBuy) {
@@ -4195,12 +4219,28 @@
 
       if (result?.ok) {
         anyBought = true;
-        coins -= amount * price;
-        stock[seed] = Math.max(0, available - amount);
+        // Cập nhật lại state từ game để lấy signature/sequence mới từ máy chủ
+        try {
+          await S.gameBridge.requestState();
+        } catch (_e) { /* ignore */ }
+        await sleep(500);
+
+        const freshSt = S.gameBridge.getLatestState();
+        if (freshSt) {
+          coins = typeof freshSt.coins === "number" && Number.isFinite(freshSt.coins) ? freshSt.coins : (coins - amount * price);
+          if (freshSt.stock) {
+            Object.assign(stock, freshSt.stock);
+          }
+        } else {
+          coins -= amount * price;
+          stock[seed] = Math.max(0, available - amount);
+        }
+
         logFlow(`Reset Purchase: Đã mua thành công ${amount} hạt ${seed}`, { coinsLeft: coins });
-        await sleep(rand(300, 500));
+        await sleep(rand(500, 800));
       } else {
         logFlow(`Reset Purchase: Mua hạt ${seed} thất bại`, { error: result?.error });
+        await sleep(800);
       }
     }
 

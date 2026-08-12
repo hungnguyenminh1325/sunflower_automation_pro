@@ -84,7 +84,7 @@
     }
 
     const { el, kind } = items[0];
-    const clicked = d.click(el) || d.nativeClickClose(el);
+    const clicked = d.clickAtCenter(el) || d.click(el);
     if (!clicked) return false;
 
     await uiJitter();

@@ -88,7 +88,7 @@
         alt: interactiveEl.getAttribute('alt')
       });
       
-      d.click(interactiveEl);
+      d.clickAtCenter(interactiveEl) || d.click(interactiveEl);
       await uiJitter();
       return true;
     }

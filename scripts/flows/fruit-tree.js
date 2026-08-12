@@ -26,14 +26,55 @@
     "Banana Sapling",
   ];
 
+  function imgAssetUrl(img) {
+    const srcset = String(img?.getAttribute?.("srcset") || "")
+      .split(",")[0]
+      .trim()
+      .split(/\s+/)[0];
+    return String(img?.currentSrc || img?.getAttribute?.("src") || srcset || "").toLowerCase();
+  }
+
+  function isFruitPatchEmpty(root) {
+    if (!root) return false;
+    const imgs = Array.from(root.querySelectorAll('img'));
+    if (imgs.length === 0) return true;
+    for (const img of imgs) {
+      const src = imgAssetUrl(img);
+      const isBg = src.includes("fruit_patch") || src.includes("fruit-patch") || src.includes("fruitpatch");
+      const isSoil = src.includes("soil") || src.includes("sand_dug");
+      if (!isBg && !isSoil) return false;
+    }
+    return true;
+  }
+
+  let lastNoAxeLogAt = 0;
+
+  function getAxeCount() {
+    if (!S.gameBridge?.isReady) return 999;
+    const st = S.gameBridge.getLatestState();
+    if (!st) return 999;
+    const inv = st.inventory || {};
+    const axe = inv["Axe"];
+    if (typeof axe === "number" && Number.isFinite(axe)) return Math.max(0, Math.floor(axe));
+    return Math.max(0, Math.floor(Number(axe) || 0));
+  }
+
   /** Lấy root của fruit patch từ một phần tử bên trong. */
   function getFruitPatchRoot(el) {
+    if (!el) return null;
     let n = el;
     for (let i = 0; i < 28 && n; i += 1) {
       if (n.classList?.contains("cursor-pointer") && (n.classList?.contains("hover:img-highlight") || n.classList?.contains("group-hover:img-highlight"))) {
         return n;
       }
       n = n.parentElement;
+    }
+    // Fallback: Nếu el là ảnh nền fruit_patch nằm ngoài div clickable (sibling)
+    let p = el.parentElement;
+    for (let i = 0; i < 5 && p; i += 1) {
+      const click = p.querySelector('.cursor-pointer.hover\\:img-highlight, .cursor-pointer.group-hover\\:img-highlight');
+      if (click) return click;
+      p = p.parentElement;
     }
     return null;
   }
@@ -96,7 +137,8 @@
     const docs = d.collectDocumentsForGameDom();
     const roots = new Set();
     for (const doc of docs) {
-      const imgs = doc.querySelectorAll('img[src*="/fruit/"], img[src*="fruit_"], img[src*="fruit/"]');
+      // Tìm tất cả các loại ảnh quả, gốc cây, và nền fruit_patch
+      const imgs = doc.querySelectorAll('img[src*="fruit_patch"], img[src*="/fruit/"], img[src*="fruit_"], img[src*="fruit/"]');
       for (const img of imgs) {
         const root = getFruitPatchRoot(img);
         if (root && d.isVisible(root)) {
@@ -129,17 +171,12 @@
       }
       if (isDead) continue;
 
-      // 3. Check if it's empty (only has fruit_patch.png)
-      const imgs = Array.from(root.querySelectorAll('img[src]'));
-      const activeFruitImgs = imgs.filter(img => {
-        const src = String(img.currentSrc || img.getAttribute("src") || "").toLowerCase();
-        return (src.includes('/fruit/') || src.includes('fruit_') || src.includes('fruit/')) && !src.includes('fruit_patch');
-      });
-      if (activeFruitImgs.length === 0) continue; // Empty or no fruit
+      // 3. Check if it's empty
+      if (isFruitPatchEmpty(root)) continue;
 
       // If all checks pass, it is ripe and ready to harvest!
       logFlow("Cây ăn quả: phát hiện quả chín sẵn sàng thu hoạch", {});
-      d.click(root);
+      d.clickAtCenter(root) || d.click(root);
       await uiJitter();
       return true;
     }
@@ -160,6 +197,7 @@
     'img[src*="withered"]',
     'img[src*="dry_tree"]',
     'img[src*="dead_bush"]',
+    'img[src*="bush_shrub"]',
   ].join(", ");
 
   /** Kiểm tra xem một phần tử DOM có phải là DeadTree component qua React Fiber không. */
@@ -186,6 +224,14 @@
   }
 
   async function tryClearStump() {
+    if (getAxeCount() <= 0) {
+      const t = nowMs();
+      if (t - lastNoAxeLogAt > 30000) {
+        lastNoAxeLogAt = t;
+        logFlow("Cây ăn quả: phát hiện gốc cần chặt nhưng không còn Rìu trong kho (Axe = 0) — bỏ qua", {});
+      }
+      return false;
+    }
     const docs = d.collectDocumentsForGameDom();
     for (const doc of docs) {
       // Selector mở rộng: nhận cả cây to chết (dead) lẫn gốc khô (stump)
@@ -204,13 +250,13 @@
         }
         const root = getFruitPatchRoot(img);
         if (root && d.isVisible(root)) {
-          const isDeadStage = /dead|stump|old_tree|withered|dry_tree|dead_bush/i.test(src);
+          const isDeadStage = /dead|stump|old_tree|withered|dry_tree|dead_bush|bush_shrub/i.test(src);
           logFlow("Cây ăn quả: chặt gốc cây già/cây to hết lượt", { src: src.split("/").slice(-2).join("/"), isDeadStage });
           // Đảm bảo chọn rìu
           if (typeof S.workbench?.ensureToolSelectedDom === "function") {
             await S.workbench.ensureToolSelectedDom("Axe");
           }
-          d.click(root);
+          d.clickAtCenter(root) || d.click(root);
           await uiJitter();
           return true;
         }
@@ -227,7 +273,7 @@
             if (typeof S.workbench?.ensureToolSelectedDom === "function") {
               await S.workbench.ensureToolSelectedDom("Axe");
             }
-            d.click(root);
+            d.clickAtCenter(root) || d.click(root);
             await uiJitter();
             return true;
           }
@@ -243,25 +289,36 @@
     const sapling = getBestSaplingFromInventory(inventory);
     if (!sapling) return false;
 
+    // 1. Tìm tất cả các ô đất trống trước
     const docs = d.collectDocumentsForGameDom();
+    const emptyRoots = [];
     for (const doc of docs) {
       const imgs = doc.querySelectorAll('img[src*="fruit_patch"]');
       for (const img of imgs) {
         const root = getFruitPatchRoot(img);
-        // Kiểm tra xem có cây nào đang mọc không (tránh trồng đè)
-        if (root && d.isVisible(root) && root.querySelectorAll('img').length === 1) {
-          logFlow(`Cây ăn quả: trồng ${sapling}`, {});
-          if (typeof S.cropDom?.ensureSeedSelectedDom === "function") {
-            const selected = await S.cropDom.ensureSeedSelectedDom(sapling);
-            if (!selected) continue;
-          }
-          d.click(root);
-          await uiJitter();
-          return true;
+        if (root && d.isVisible(root) && isFruitPatchEmpty(root)) {
+          emptyRoots.push(root);
         }
       }
     }
-    return false;
+
+    if (emptyRoots.length === 0) return false;
+
+    // 2. Chọn hạt giống cây ăn quả đúng 1 lần duy nhất
+    if (typeof S.cropDom?.ensureSeedSelectedDom === "function") {
+      const selected = await S.cropDom.ensureSeedSelectedDom(sapling);
+      if (!selected) {
+        // Nếu không chọn được hạt giống (do lag, hoặc thực tế hết hạt), thoát ngay để tránh mở/đóng kho đồ liên tục
+        return false;
+      }
+    }
+
+    // 3. Trồng vào ô trống đầu tiên
+    const targetRoot = emptyRoots[0];
+    logFlow(`Cây ăn quả: trồng ${sapling}`, {});
+    d.clickAtCenter(targetRoot) || d.click(targetRoot);
+    await uiJitter();
+    return true;
   }
 
   async function runFruitTreeCycle() {

@@ -48,9 +48,9 @@
     merged.autoChop = merged.autoSunflowerBasic;
     merged.autoMine = merged.autoSunflowerBasic;
     merged.autoFarmCropsDom = merged.autoSunflowerBasic;
+    merged.autoHarvestMushrooms = merged.autoSunflowerBasic;
     merged.autoCookFirePit = asBool(merged.autoCookFirePit, D.autoCookFirePit);
     merged.autoCookKitchen = asBool(merged.autoCookKitchen, D.autoCookKitchen);
-    merged.autoHarvestMushrooms = asBool(merged.autoHarvestMushrooms, D.autoHarvestMushrooms);
     merged.mushroomTargetWild = asBoolPreferTrue(merged.mushroomTargetWild, D.mushroomTargetWild);
     merged.mushroomTargetMagic = asBoolPreferTrue(merged.mushroomTargetMagic, D.mushroomTargetMagic);
     merged.clearConsole = asBool(merged.clearConsole, D.clearConsole);

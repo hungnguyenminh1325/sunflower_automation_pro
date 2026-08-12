@@ -11,7 +11,7 @@ const ids = {
   cropDomSeedName: document.getElementById("cropDomSeedName"),
   cropDomSkipLongGrow: document.getElementById("cropDomSkipLongGrow"),
   cropDomBuySeedsAtBetty: document.getElementById("cropDomBuySeedsAtBetty"),
-  autoHarvestMushrooms: document.getElementById("autoHarvestMushrooms"),
+
   mushroomTargetWild: document.getElementById("mushroomTargetWild"),
   mushroomTargetMagic: document.getElementById("mushroomTargetMagic"),
   mineTargetStone: document.getElementById("mineTargetStone"),
@@ -144,7 +144,7 @@ function readUiSettings() {
     cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
     cropDomSkipLongGrow: !!ids.cropDomSkipLongGrow?.checked,
     cropDomBuySeedsAtBetty: !!ids.cropDomBuySeedsAtBetty?.checked,
-    autoHarvestMushrooms: !!ids.autoHarvestMushrooms?.checked,
+    autoHarvestMushrooms: !!ids.autoSunflowerBasic?.checked,
     mushroomTargetWild: !!ids.mushroomTargetWild?.checked,
     mushroomTargetMagic: !!ids.mushroomTargetMagic?.checked,
     mineTargetStone: !!ids.mineTargetStone?.checked,
@@ -172,7 +172,7 @@ function renderSettings(settings) {
   }
   if (ids.cropDomSkipLongGrow) ids.cropDomSkipLongGrow.checked = !!settings.cropDomSkipLongGrow;
   if (ids.cropDomBuySeedsAtBetty) ids.cropDomBuySeedsAtBetty.checked = settings.cropDomBuySeedsAtBetty === true;
-  if (ids.autoHarvestMushrooms) ids.autoHarvestMushrooms.checked = !!settings.autoHarvestMushrooms;
+
   if (ids.mushroomTargetWild) ids.mushroomTargetWild.checked = settings.mushroomTargetWild !== false;
   if (ids.mushroomTargetMagic) ids.mushroomTargetMagic.checked = settings.mushroomTargetMagic !== false;
   if (ids.mineTargetStone) ids.mineTargetStone.checked = settings.mineTargetStone !== false;
@@ -257,7 +257,7 @@ const autoSaveTargets = [
   ids.cropDomSeedName,
   ids.cropDomSkipLongGrow,
   ids.cropDomBuySeedsAtBetty,
-  ids.autoHarvestMushrooms,
+
   ids.mushroomTargetWild,
   ids.mushroomTargetMagic,
   ids.mineTargetStone,

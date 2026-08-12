@@ -8,11 +8,7 @@ const ids = {
   autoFruitTree: document.getElementById("autoFruitTree"),
   autoHoney: document.getElementById("autoHoney"),
   cropDomSeedName: document.getElementById("cropDomSeedName"),
-  cropDomSkipLongGrow: document.getElementById("cropDomSkipLongGrow"),
-  cropDomBuySeedsAtBetty: document.getElementById("cropDomBuySeedsAtBetty"),
 
-  mushroomTargetWild: document.getElementById("mushroomTargetWild"),
-  mushroomTargetMagic: document.getElementById("mushroomTargetMagic"),
   mineTargetStone: document.getElementById("mineTargetStone"),
   mineTargetIron: document.getElementById("mineTargetIron"),
   mineTargetGold: document.getElementById("mineTargetGold"),
@@ -141,11 +137,11 @@ function readUiSettings() {
     reloadPageOnGoblinMoonCaptcha: true,
     autoFarmCropsDom: !!ids.autoSunflowerBasic?.checked,
     cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
-    cropDomSkipLongGrow: !!ids.cropDomSkipLongGrow?.checked,
-    cropDomBuySeedsAtBetty: !!ids.cropDomBuySeedsAtBetty?.checked,
+    cropDomSkipLongGrow: false,
+    cropDomBuySeedsAtBetty: false,
     autoHarvestMushrooms: !!ids.autoSunflowerBasic?.checked,
-    mushroomTargetWild: !!ids.mushroomTargetWild?.checked,
-    mushroomTargetMagic: !!ids.mushroomTargetMagic?.checked,
+    mushroomTargetWild: true,
+    mushroomTargetMagic: true,
     mineTargetStone: !!ids.mineTargetStone?.checked,
     mineTargetIron: !!ids.mineTargetIron?.checked,
     mineTargetGold: !!ids.mineTargetGold?.checked,
@@ -168,11 +164,7 @@ function renderSettings(settings) {
   if (ids.cropDomSeedName) {
     ids.cropDomSeedName.value = String(settings.cropDomSeedName ?? "").trim();
   }
-  if (ids.cropDomSkipLongGrow) ids.cropDomSkipLongGrow.checked = !!settings.cropDomSkipLongGrow;
-  if (ids.cropDomBuySeedsAtBetty) ids.cropDomBuySeedsAtBetty.checked = settings.cropDomBuySeedsAtBetty === true;
 
-  if (ids.mushroomTargetWild) ids.mushroomTargetWild.checked = settings.mushroomTargetWild !== false;
-  if (ids.mushroomTargetMagic) ids.mushroomTargetMagic.checked = settings.mushroomTargetMagic !== false;
   if (ids.mineTargetStone) ids.mineTargetStone.checked = settings.mineTargetStone !== false;
   if (ids.mineTargetIron) ids.mineTargetIron.checked = settings.mineTargetIron !== false;
   if (ids.mineTargetGold) ids.mineTargetGold.checked = settings.mineTargetGold !== false;
@@ -252,11 +244,6 @@ const autoSaveTargets = [
   ids.autoFruitTree,
   ids.autoHoney,
   ids.cropDomSeedName,
-  ids.cropDomSkipLongGrow,
-  ids.cropDomBuySeedsAtBetty,
-
-  ids.mushroomTargetWild,
-  ids.mushroomTargetMagic,
   ids.mineTargetStone,
   ids.mineTargetIron,
   ids.mineTargetGold,

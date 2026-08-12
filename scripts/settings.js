@@ -51,8 +51,8 @@
     merged.autoHarvestMushrooms = merged.autoSunflowerBasic;
     merged.autoCookFirePit = asBool(merged.autoCookFirePit, D.autoCookFirePit);
     merged.autoCookKitchen = asBool(merged.autoCookKitchen, D.autoCookKitchen);
-    merged.mushroomTargetWild = asBoolPreferTrue(merged.mushroomTargetWild, D.mushroomTargetWild);
-    merged.mushroomTargetMagic = asBoolPreferTrue(merged.mushroomTargetMagic, D.mushroomTargetMagic);
+    merged.mushroomTargetWild = true;
+    merged.mushroomTargetMagic = true;
     merged.clearConsole = asBool(merged.clearConsole, D.clearConsole);
     merged.strikeLearnAutoChop = asBoolPreferTrue(merged.strikeLearnAutoChop, D.strikeLearnAutoChop);
     merged.strikeLearnAutoMine = asBoolPreferTrue(merged.strikeLearnAutoMine, D.strikeLearnAutoMine);
@@ -68,8 +68,8 @@
     merged.mineTargetSunstone = asBoolPreferTrue(merged.mineTargetSunstone, D.mineTargetSunstone);
     merged.cropDomSeedName = String(merged.cropDomSeedName == null ? D.cropDomSeedName : merged.cropDomSeedName).trim();
     merged.cropDomMinSeedCount = Math.max(0, Math.min(500, Math.floor(Number(merged.cropDomMinSeedCount) || D.cropDomMinSeedCount)));
-    merged.cropDomSkipLongGrow = asBool(merged.cropDomSkipLongGrow, D.cropDomSkipLongGrow);
-    merged.cropDomBuySeedsAtBetty = merged.cropDomBuySeedsAtBetty === true;
+    merged.cropDomSkipLongGrow = false;
+    merged.cropDomBuySeedsAtBetty = false;
     merged.autoPetalHarvestDom = asBool(merged.autoPetalHarvestDom, D.autoPetalHarvestDom);
     merged.autoFruitTree = asBool(merged.autoFruitTree, D.autoFruitTree);
     merged.autoHoney = asBool(merged.autoHoney, D.autoHoney);

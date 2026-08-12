@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sunflower Land UI Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -36,50 +39,35 @@
           <span class="setting-copy">
             <strong>Auto mua công cụ + hạt giống</strong>
           </span>
-          <span class="toggle">
-            <input id="autoBuyTools" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoBuyTools" type="checkbox" class="custom-checkbox" />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Restock Blacksmith khi hết stock</strong>
           </span>
-          <span class="toggle">
-            <input id="autoRestockBlacksmith" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoRestockBlacksmith" type="checkbox" class="custom-checkbox" />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Sunflower cơ bản</strong>
           </span>
-          <span class="toggle">
-            <input id="autoSunflowerBasic" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoSunflowerBasic" type="checkbox" class="custom-checkbox" checked />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự nấu Fire Pit (bridge)</strong>
           </span>
-          <span class="toggle">
-            <input id="autoCookFirePit" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoCookFirePit" type="checkbox" class="custom-checkbox" />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự nấu Kitchen (bridge)</strong>
           </span>
-          <span class="toggle">
-            <input id="autoCookKitchen" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoCookKitchen" type="checkbox" class="custom-checkbox" />
         </label>
 
         <div class="input-grid" style="margin: -8px 0 12px">
@@ -99,20 +87,14 @@
           <span class="setting-copy">
             <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
           </span>
-          <span class="toggle">
-            <input id="autoFruitTree" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoFruitTree" type="checkbox" class="custom-checkbox" />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Thu hoạch hoa, mật ong (DOM + Bridge)</strong>
           </span>
-          <span class="toggle">
-            <input id="autoHoney" type="checkbox" />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoHoney" type="checkbox" class="custom-checkbox" />
         </label>
 
         <div class="input-grid" style="margin: -8px 0 12px">
@@ -125,29 +107,20 @@
           <span class="setting-copy">
             <strong>Ưu tiên hạt lớn nhanh (catalogue)</strong>
           </span>
-          <span class="toggle">
-            <input id="cropDomSkipLongGrow" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="cropDomSkipLongGrow" type="checkbox" class="custom-checkbox" checked />
         </label>
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Mua hạt tại Betty (Market)</strong>
           </span>
-          <span class="toggle">
-            <input id="cropDomBuySeedsAtBetty" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="cropDomBuySeedsAtBetty" type="checkbox" class="custom-checkbox" checked />
         </label>
 
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Tự thu nấm (wild / magic)</strong>
           </span>
-          <span class="toggle">
-            <input id="autoHarvestMushrooms" type="checkbox" checked />
-            <span class="toggle-ui"></span>
-          </span>
+          <input id="autoHarvestMushrooms" type="checkbox" class="custom-checkbox" checked />
         </label>
 
         <p class="setting-hint mine-target-intro">

@@ -4221,10 +4221,18 @@
       return allowedSet.has(s);
     });
 
-    // Gom cả hạt giống cây ăn quả (Fruit Saplings) và hoa (Flower Seeds)
-    const seedsToBuy = [...cropSeeds, ...FRUIT_SAPLINGS_DOM, ...FLOWER_SEEDS_DOM];
+    // Gom hạt giống theo cấu hình bật/tắt (autoFruitTree và autoHoney) của người dùng
+    const extraSeeds = [];
+    if (runtime.settings.autoFruitTree) {
+      extraSeeds.push(...FRUIT_SAPLINGS_DOM);
+    }
+    if (runtime.settings.autoHoney) {
+      extraSeeds.push(...FLOWER_SEEDS_DOM);
+    }
 
-    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt (gồm cả Fruit/Flower) cần check stock.`, { coins, sfl });
+    const seedsToBuy = [...cropSeeds, ...extraSeeds];
+
+    logFlow(`Reset Purchase: Mùa hiện tại là ${seasonKey}. Có ${seedsToBuy.length} loại hạt cần check stock.`, { coins, sfl });
 
     // Debug log kiểm tra tồn kho cây ăn quả
     const fruitStockDetails = {};

@@ -44,8 +44,10 @@
     merged.masterEnabled = asBool(merged.masterEnabled, D.masterEnabled);
     merged.autoBuyTools = asBool(merged.autoBuyTools, D.autoBuyTools);
     merged.autoRestockBlacksmith = asBool(merged.autoRestockBlacksmith, D.autoRestockBlacksmith);
-    merged.autoChop = asBool(merged.autoChop, D.autoChop);
-    merged.autoMine = asBool(merged.autoMine, D.autoMine);
+    merged.autoSunflowerBasic = asBool(merged.autoSunflowerBasic, D.autoSunflowerBasic);
+    merged.autoChop = merged.autoSunflowerBasic;
+    merged.autoMine = merged.autoSunflowerBasic;
+    merged.autoFarmCropsDom = merged.autoSunflowerBasic;
     merged.autoCookFirePit = asBool(merged.autoCookFirePit, D.autoCookFirePit);
     merged.autoCookKitchen = asBool(merged.autoCookKitchen, D.autoCookKitchen);
     merged.autoHarvestMushrooms = asBool(merged.autoHarvestMushrooms, D.autoHarvestMushrooms);
@@ -64,7 +66,6 @@
     merged.mineTargetGold = asBoolPreferTrue(merged.mineTargetGold, D.mineTargetGold);
     merged.mineTargetCrimstone = asBoolPreferTrue(merged.mineTargetCrimstone, D.mineTargetCrimstone);
     merged.mineTargetSunstone = asBoolPreferTrue(merged.mineTargetSunstone, D.mineTargetSunstone);
-    merged.autoFarmCropsDom = asBool(merged.autoFarmCropsDom, D.autoFarmCropsDom);
     merged.cropDomSeedName = String(merged.cropDomSeedName == null ? D.cropDomSeedName : merged.cropDomSeedName).trim();
     merged.cropDomMinSeedCount = Math.max(0, Math.min(500, Math.floor(Number(merged.cropDomMinSeedCount) || D.cropDomMinSeedCount)));
     merged.cropDomSkipLongGrow = asBool(merged.cropDomSkipLongGrow, D.cropDomSkipLongGrow);

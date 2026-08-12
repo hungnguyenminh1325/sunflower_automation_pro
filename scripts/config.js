@@ -9,6 +9,7 @@
     masterEnabled: true,
     autoBuyTools: false,
     autoRestockBlacksmith: false,
+    autoSunflowerBasic: true,
     autoChop: true,
     autoMine: true,
     autoCookFirePit: false,

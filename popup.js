@@ -2,8 +2,7 @@ const ids = {
   masterEnabled: document.getElementById("masterEnabled"),
   autoBuyTools: document.getElementById("autoBuyTools"),
   autoRestockBlacksmith: document.getElementById("autoRestockBlacksmith"),
-  autoChop: document.getElementById("autoChop"),
-  autoMine: document.getElementById("autoMine"),
+  autoSunflowerBasic: document.getElementById("autoSunflowerBasic"),
   autoCookFirePit: document.getElementById("autoCookFirePit"),
   autoCookKitchen: document.getElementById("autoCookKitchen"),
   cookPreferredRecipe: document.getElementById("cookPreferredRecipe"),
@@ -14,7 +13,6 @@ const ids = {
   resetCaptchaReloadSkipCount: document.getElementById("resetCaptchaReloadSkipCount"),
   captchaSolvedCount: document.getElementById("captchaSolvedCount"),
   captchaFailedCount: document.getElementById("captchaFailedCount"),
-  autoFarmCropsDom: document.getElementById("autoFarmCropsDom"),
   cropDomSeedName: document.getElementById("cropDomSeedName"),
   cropDomSkipLongGrow: document.getElementById("cropDomSkipLongGrow"),
   cropDomBuySeedsAtBetty: document.getElementById("cropDomBuySeedsAtBetty"),
@@ -138,16 +136,16 @@ function readUiSettings() {
   return {
     masterEnabled: !!ids.masterEnabled.checked,
     autoBuyTools: !!ids.autoBuyTools.checked,
-    autoRestockBlacksmith: !!ids.autoRestockBlacksmith.checked,
-    autoChop: !!ids.autoChop.checked,
-    autoMine: !!ids.autoMine?.checked,
+    autoSunflowerBasic: !!ids.autoSunflowerBasic?.checked,
+    autoChop: !!ids.autoSunflowerBasic?.checked,
+    autoMine: !!ids.autoSunflowerBasic?.checked,
     autoCookFirePit: !!ids.autoCookFirePit?.checked,
     autoCookKitchen: !!ids.autoCookKitchen?.checked,
     cookPreferredRecipe: String(ids.cookPreferredRecipe?.value || "").trim(),
     autoFruitTree: !!ids.autoFruitTree?.checked,
     autoHoney: !!ids.autoHoney?.checked,
     reloadPageOnGoblinMoonCaptcha: !!ids.reloadPageOnGoblinMoonCaptcha?.checked,
-    autoFarmCropsDom: !!ids.autoFarmCropsDom?.checked,
+    autoFarmCropsDom: !!ids.autoSunflowerBasic?.checked,
     cropDomSeedName: String(ids.cropDomSeedName?.value ?? "").trim(),
     cropDomSkipLongGrow: !!ids.cropDomSkipLongGrow?.checked,
     cropDomBuySeedsAtBetty: !!ids.cropDomBuySeedsAtBetty?.checked,
@@ -165,9 +163,8 @@ function readUiSettings() {
 function renderSettings(settings) {
   ids.masterEnabled.checked = !!settings.masterEnabled;
   ids.autoBuyTools.checked = !!settings.autoBuyTools;
-  ids.autoRestockBlacksmith.checked = !!settings.autoRestockBlacksmith;
-  ids.autoChop.checked = !!settings.autoChop;
-  if (ids.autoMine) ids.autoMine.checked = !!settings.autoMine;
+  if (ids.autoRestockBlacksmith) ids.autoRestockBlacksmith.checked = !!settings.autoRestockBlacksmith;
+  if (ids.autoSunflowerBasic) ids.autoSunflowerBasic.checked = !!settings.autoSunflowerBasic;
   if (ids.autoCookFirePit) ids.autoCookFirePit.checked = !!settings.autoCookFirePit;
   if (ids.autoCookKitchen) ids.autoCookKitchen.checked = !!settings.autoCookKitchen;
   if (ids.cookPreferredRecipe) {
@@ -178,7 +175,6 @@ function renderSettings(settings) {
   if (ids.reloadPageOnGoblinMoonCaptcha) {
     ids.reloadPageOnGoblinMoonCaptcha.checked = !!settings.reloadPageOnGoblinMoonCaptcha;
   }
-  if (ids.autoFarmCropsDom) ids.autoFarmCropsDom.checked = !!settings.autoFarmCropsDom;
   if (ids.cropDomSeedName) {
     ids.cropDomSeedName.value = String(settings.cropDomSeedName ?? "").trim();
   }
@@ -274,15 +270,13 @@ const autoSaveTargets = [
   ids.masterEnabled,
   ids.autoBuyTools,
   ids.autoRestockBlacksmith,
-  ids.autoChop,
-  ids.autoMine,
+  ids.autoSunflowerBasic,
   ids.autoCookFirePit,
   ids.autoCookKitchen,
   ids.cookPreferredRecipe,
   ids.autoFruitTree,
   ids.autoHoney,
   ids.reloadPageOnGoblinMoonCaptcha,
-  ids.autoFarmCropsDom,
   ids.cropDomSeedName,
   ids.cropDomSkipLongGrow,
   ids.cropDomBuySeedsAtBetty,

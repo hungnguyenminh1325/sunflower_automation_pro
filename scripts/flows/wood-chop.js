@@ -24,7 +24,7 @@
     if (tile.querySelector("img[src*='resources/stump']") || tile.querySelector("img[src*='stump']")) return true;
     const hasClickable = !!tile.querySelector(".cursor-pointer.hover\\:img-highlight");
     if (hasClickable) return false;
-    const hasAnyTreeImg = !!tile.querySelector("img[src*='resources/tree'], img[src*='/tree/']");
+    const hasAnyTreeImg = !!tile.querySelector("img[src*='resources/tree'], img[src*='/tree/'], img[src*='bush_shrub']");
     return !hasAnyTreeImg;
   }
 
@@ -122,8 +122,10 @@
         [
           ".cursor-pointer.hover\\:img-highlight img[src*='resources/tree/']",
           ".cursor-pointer.hover\\:img-highlight img[src*='/resources/tree/']",
+          ".cursor-pointer.hover\\:img-highlight img[src*='bush_shrub']",
           "img[src*='resources/tree/']",
           "img[src*='/resources/tree/'][src*='.webp']",
+          "img[src*='bush_shrub']",
         ].join(", "),
       ),
     );
@@ -139,7 +141,7 @@
       if (!d.isClickablePointerEventsOk(clickable)) continue;
 
       const src = String(node.getAttribute("src") || "").toLowerCase();
-      if (!src.includes("resources/tree") && !/\/tree\//i.test(src) && !/_tree\.(webp|png)/i.test(src)) continue;
+      if (!src.includes("resources/tree") && !/\/tree\//i.test(src) && !/_tree\.(webp|png)/i.test(src) && !src.includes("bush_shrub")) continue;
       if (src.includes("stump")) continue;
       if (clickable.querySelector("img[src*='resources/stump']")) continue;
 

@@ -10,23 +10,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="popup-shell">
-      <section class="hero-card">
-        <div class="hero-copy">
+    <main class="popup-container">
+      <header class="app-header">
+        <div>
           <p class="eyebrow">Sunflower Land</p>
           <h1>UI Automation</h1>
-          <p class="hero-text">v2.0.0 — UI-first automation helper</p>
         </div>
-      </section>
+        <span class="version-tag">v2.0.0</span>
+      </header>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Tác vụ chính</p>
-            <h2>Cấu hình tự động</h2>
-          </div>
-        </div>
+      <div class="divider"></div>
 
+      <section class="settings-section">
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Auto mua công cụ + hạt giống</strong>
@@ -62,8 +57,6 @@
           <input id="autoCookKitchen" type="checkbox" class="custom-checkbox" />
         </label>
 
-
-
         <label class="setting-row">
           <span class="setting-copy">
             <strong>Trồng + thu hoạch cây ăn quả (DOM)</strong>
@@ -78,15 +71,11 @@
           <input id="autoHoney" type="checkbox" class="custom-checkbox" />
         </label>
 
-
-
-        <p class="setting-hint mine-target-intro">
-          <strong>Quặng cần đào:</strong>
-        </p>
+        <p class="section-title">Quặng cần đào:</p>
         <div class="mine-target-bunch">
           <label class="mine-chip">
             <input id="mineTargetStone" type="checkbox" checked />
-            <span>Đá</span>
+            <span>Đá (stone)</span>
           </label>
           <label class="mine-chip">
             <input id="mineTargetIron" type="checkbox" checked />
@@ -106,8 +95,15 @@
           </label>
         </div>
       </section>
-    </main>
 
+      <div class="divider"></div>
+
+      <footer class="app-status">
+        <span class="status-label">Trạng thái:</span>
+        <span id="statusText" class="status-text">Đang kết nối...</span>
+        <span id="statusBadge" class="status-badge">Check</span>
+      </footer>
+    </main>
     <script src="popup.js"></script>
   </body>
 </html>

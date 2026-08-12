@@ -211,6 +211,7 @@
       if ((stock[s] || 0) <= 0) return false;
       if (GREENHOUSE_SEED_NAMES_DOM.includes(s)) return false;
       if (!allowedSet.has(s)) return false;
+      if (runtime.lockedSeeds?.has(s)) return false; // Bỏ qua hạt đã được phát hiện là bị khóa (Locked)
       return true;
     });
     if (available.length === 0) return null;
@@ -2603,9 +2604,15 @@
     }
 
     const errReason = String(result?.error || "unknown");
-    logFlow("Ruộng: không mua được hạt (game báo bận liên tục)", { seedToBuy, amount, error: errReason });
+    logFlow("Ruộng: không mua được hạt", { seedToBuy, amount, error: errReason });
     
-    if (/insufficient|not_enough|no_coins|funds/i.test(errReason)) {
+    const err = errReason.toLowerCase();
+    if (/locked|level|requirement|experience|bumpkin|rank|unlock/i.test(err)) {
+      runtime.lockedSeeds = runtime.lockedSeeds || new Set();
+      runtime.lockedSeeds.add(seedToBuy);
+      logFlow(`Ruộng: Đã phát hiện hạt ${seedToBuy} chưa mở khóa (Locked) — tự động bỏ qua ở các chu kỳ tiếp theo`, {});
+      armCropDomSkipBuySeeds("hat_chua_mo_khoa", 10 * 60 * 1000);
+    } else if (/insufficient|not_enough|no_coins|funds/i.test(errReason)) {
       armCropDomSkipBuySeeds("khong_du_tien", 30 * 60 * 1000);
     } else {
       // Game lag → penalty ngắn hơn (3 giây) để thử lại nhanh
@@ -4218,6 +4225,8 @@
 
     let anyBought = false;
     for (const seed of seedsToBuy) {
+      if (runtime.lockedSeeds?.has(seed)) continue; // Bỏ qua nếu hạt này đã bị khóa (chưa mở khóa)
+
       const available = Math.floor(Number(stock[seed] || 0));
       if (available <= 0) continue;
 
@@ -4289,6 +4298,12 @@
         await sleep(rand(500, 800));
       } else {
         logFlow(`Reset Purchase: Mua hạt ${seed} thất bại`, { error: result?.error });
+        const err = String(result?.error || "").toLowerCase();
+        if (/locked|level|requirement|experience|bumpkin|rank|unlock/i.test(err)) {
+          runtime.lockedSeeds = runtime.lockedSeeds || new Set();
+          runtime.lockedSeeds.add(seed);
+          logFlow(`Reset Purchase: Đã đánh dấu hạt ${seed} là chưa mở khóa (Locked) — sẽ bỏ qua ở các lượt sau`, {});
+        }
         await sleep(800);
       }
     }

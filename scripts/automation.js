@@ -129,8 +129,95 @@
   }
 
   /**
+   * Tự động phát hiện và click bất kỳ nút/văn bản nào có chứa từ "Claim" (Claim, Claim your gift, Claim reward, Claim All, v.v.)
+   * cũng như "Tap to continue", "Chạm để tiếp tục", v.v.
+   */
+  async function tryHandlePopupsAndClaimDialogs() {
+    if (!S.dom?.collectDocumentsForGameDom) return false;
+    const docs = S.dom.collectDocumentsForGameDom();
+
+    for (let di = 0; di < docs.length; di += 1) {
+      const doc = docs[di];
+      if (!doc || !doc.body) continue;
+
+      let foundEl = null;
+      try {
+        const elements = doc.querySelectorAll("button, [role='button'], a, p, span, div");
+        const matches = [];
+        for (let i = 0; i < elements.length; i += 1) {
+          const el = elements[i];
+          if (S.dom?.isVisible && !S.dom.isVisible(el)) continue;
+          if (el.disabled) continue;
+
+          const text = String(el.textContent || "").trim().toLowerCase();
+          if (!text || text.length > 150) continue;
+
+          if (
+            /\bclaim\b/i.test(text) ||
+            text.includes("nhận quà") ||
+            text.includes("nhận phần thưởng") ||
+            text.includes("nhận ngay") ||
+            text.includes("tap to continue") ||
+            text.includes("click to continue") ||
+            text.includes("press to continue") ||
+            text.includes("tap anywhere") ||
+            text.includes("click anywhere") ||
+            text.includes("chạm để tiếp tục") ||
+            text.includes("bấm để tiếp tục") ||
+            text.includes("nhấp để tiếp tục")
+          ) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 && rect.width < 900 && rect.height > 0 && rect.height < 600) {
+              matches.push(el);
+            }
+          }
+        }
+
+        if (matches.length > 0) {
+          // Ưu tiên phần tử ngắn nhất (nút hoặc thẻ nhãn dán trực tiếp) để tránh click nhầm khung lớn
+          matches.sort((a, b) => (a.textContent || "").length - (b.textContent || "").length);
+          foundEl = matches[0];
+        }
+      } catch (_e) { }
+
+      if (!foundEl) continue;
+
+      let clickTarget = foundEl;
+      let p = foundEl;
+      for (let depth = 0; depth < 6 && p; depth += 1) {
+        if (
+          p.tagName === "BUTTON" ||
+          p.getAttribute("role") === "button" ||
+          p.classList?.contains("cursor-pointer")
+        ) {
+          clickTarget = p;
+          break;
+        }
+        p = p.parentElement;
+      }
+
+      S.time.logFlow(`Auto Popup/Claim Handler: Phát hiện nút Claim ("${foundEl.textContent?.trim().slice(0, 40)}") — tự động click`, {});
+
+      if (S.dom?.doubleClickAtCenter) {
+        S.dom.doubleClickAtCenter(clickTarget) || S.dom.clickAtCenter(clickTarget) || S.dom.nativeClickClose(clickTarget);
+      } else if (S.dom?.clickAtCenter) {
+        S.dom.clickAtCenter(clickTarget);
+      } else if (S.dom?.nativeClickClose) {
+        S.dom.nativeClickClose(clickTarget);
+      } else {
+        clickTarget.click?.();
+      }
+
+      runtime.busy = false;
+      await S.time.sleep(600);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Luồng tự động xử lý lỗi + Tải lại trang (Auto Error & Refresh Handler):
-   * Chạy độc lập trên interval riêng (mỗi 1.5s), giống như captcha.
+   * Chạy độc lập trên interval riêng (mỗi 1s), giống như captcha.
    * Tự động phát hiện popup lỗi / update / try again / refresh / reload / retry...
    * và click bấm nút khôi phục hoặc tự động reload trang nếu bị treo lỗi.
    */
@@ -180,7 +267,7 @@
         let clickableCandidates = [];
         try {
           clickableCandidates = Array.from(
-            container.querySelectorAll("button, [role='button'], a, span, div.cursor-pointer")
+            container.querySelectorAll("button, [role='button'], a, span, p, div.cursor-pointer")
           );
         } catch (_e) { }
 
@@ -189,14 +276,16 @@
           const text = String(el.textContent || "").trim().toLowerCase();
           if (!text || text.length > 50) continue;
 
-          // Từ khóa nút Refresh / Try again / Retry / Reload / Update / Continue / Okay
+          // Từ khóa nút Refresh / Try again / Retry / Reload / Update / Continue / Okay / Tap to continue
           const isErrorActionBtn =
-            /^(try again|refresh|reload|retry|update|thử lại|tải lại|tiếp tục|continue|okay|close|đóng)$/i.test(text) ||
-            /\btry\s+again\b|\brefresh\b|\breload\b|\bretry\b|\bupdate\b|\bthử\s+lại\b|\btải\s+lại\b/i.test(text);
+            /^(try again|refresh|reload|retry|update|thử lại|tải lại|tiếp tục|continue|okay|close|đóng|tap to continue|click to continue)$/i.test(text) ||
+            /\btry\s+again\b|\brefresh\b|\breload\b|\bretry\b|\bupdate\b|\bthử\s+lại\b|\btải\s+lại\b|\btap\s+to\s+continue\b|\bclick\s+to\s+continue\b/i.test(text);
 
           if (isErrorActionBtn) {
             S.time.logFlow(`Auto Error Handler: Phát hiện nút khôi phục/refresh ("${text}"), tiến hành click`, {});
-            if (S.dom?.nativeClickClose) {
+            if (S.dom?.doubleClickAtCenter) {
+              S.dom.doubleClickAtCenter(el) || S.dom.clickAtCenter(el) || S.dom.nativeClickClose(el);
+            } else if (S.dom?.nativeClickClose) {
               S.dom.nativeClickClose(el);
             } else if (S.dom?.clickAtCenter) {
               S.dom.clickAtCenter(el);
@@ -228,10 +317,11 @@
     return false;
   }
 
-  // Chạy luồng tự động click Refresh / Try again độc lập mỗi 1.5s (giống captcha)
+  // Chạy luồng tự động click Refresh / Try again / Tap to continue / Claim gift độc lập mỗi 1s
   setInterval(() => {
+    tryHandlePopupsAndClaimDialogs().catch(() => {});
     tryAutoHandleErrorAndRefresh().catch(() => {});
-  }, 1500);
+  }, 1000);
 
   async function automationTick() {
     if (!S.dom.shouldRunAutomationInThisFrame() || runtime.busy) return;
@@ -240,6 +330,9 @@
       await S.pullAutomationFlagsFromStorage();
     }
     if (!runtime.settings.masterEnabled) return;
+
+    // Tự động nhấp qua các màn hình thoại NPC / popup "Claim your gift" / "Tap to continue"
+    await tryHandlePopupsAndClaimDialogs();
 
     // ── Kiểm tra route: chỉ chạy khi đang ở trang farm /play/ ──
     const onFarmRoute = S.dom.isOnFarmRoute();

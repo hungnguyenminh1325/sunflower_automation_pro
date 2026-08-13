@@ -286,19 +286,71 @@
     }
     el.dispatchEvent(new MouseEvent("mouseup", opts));
     el.dispatchEvent(new MouseEvent("click", opts));
-    
-    setTimeout(() => {
-      try {
-        if (typeof PointerEvent !== "undefined") {
-          el.dispatchEvent(new PointerEvent("pointerout", { ...opts, pointerId: 1, pointerType: "mouse" }));
-          el.dispatchEvent(new PointerEvent("pointerleave", { ...opts, pointerId: 1, pointerType: "mouse" }));
-        }
-      } catch (_e) {
-        // ignore
+
+    try {
+      if (typeof el.click === "function") {
+        el.click();
       }
-      el.dispatchEvent(new MouseEvent("mouseout", opts));
-      el.dispatchEvent(new MouseEvent("mouseleave", opts));
-    }, 50);
+    } catch (_e) {
+      // ignore
+    }
+
+    return true;
+  };
+
+  d.doubleClick = function doubleClick(el) {
+    if (!el || !d.isVisible(el)) return false;
+    try {
+      const vw = d.viewForElement(el);
+      if (vw && typeof vw.focus === "function") vw.focus();
+    } catch (_e) {}
+    
+    d.click(el);
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    el.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+    try {
+      if (typeof el.click === "function") {
+        el.click();
+      }
+    } catch (_e) {}
+    return true;
+  };
+
+  d.doubleClickAtCenter = function doubleClickAtCenter(el) {
+    if (!el || !d.isVisible(el)) return false;
+    const vw = d.viewForElement(el);
+    try {
+      if (vw && typeof vw.focus === "function") vw.focus();
+    } catch (_e) {}
+    
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const opts = { bubbles: true, cancelable: true, clientX: cx, clientY: cy, view: vw };
+
+    d.clickAtCenter(el);
+
+    try {
+      if (typeof PointerEvent !== "undefined") {
+        el.dispatchEvent(new PointerEvent("pointerdown", { ...opts, pointerId: 1, pointerType: "mouse" }));
+      }
+    } catch (_e) {}
+    el.dispatchEvent(new MouseEvent("mousedown", opts));
+    try {
+      if (typeof PointerEvent !== "undefined") {
+        el.dispatchEvent(new PointerEvent("pointerup", { ...opts, pointerId: 1, pointerType: "mouse" }));
+      }
+    } catch (_e) {}
+    el.dispatchEvent(new MouseEvent("mouseup", opts));
+    el.dispatchEvent(new MouseEvent("click", opts));
+    el.dispatchEvent(new MouseEvent("dblclick", opts));
+    
+    try {
+      if (typeof el.click === "function") {
+        el.click();
+      }
+    } catch (_e) {}
     
     return true;
   };
@@ -309,15 +361,17 @@
     if (rect.width < 2 || rect.height < 2) return false;
     const style = d.viewForElement(el).getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden") return false;
+    
+    let done = d.clickAtCenter(el);
     try {
       if (typeof el.click === "function") {
         el.click();
-        return true;
+        done = true;
       }
     } catch (_e) {
       // ignore
     }
-    return d.clickAtCenter(el);
+    return done;
   };
 
   d.textOf = function textOf(el) {

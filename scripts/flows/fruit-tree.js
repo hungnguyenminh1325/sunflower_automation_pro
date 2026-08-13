@@ -202,7 +202,7 @@
       }
       el = el.parentElement;
     }
-    d.clickAtCenter(clickEl);
+    d.doubleClickAtCenter(clickEl) || d.doubleClick(clickEl) || d.clickAtCenter(clickEl);
     await sleep(rand(300, 500));
 
     logFlow("Cây ăn quả: đã chọn hạt giống từ inventory", { seedName, slug });

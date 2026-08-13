@@ -782,8 +782,8 @@
 
   async function clickWorkbenchTabSafely(el, toolType, round) {
     if (!el || !d.isVisible(el)) return false;
-    logBuyStep("Click ô tab nâu 1 lần", { toolType, round });
-    d.clickAtCenter(el);
+    logBuyStep("Click ô tab nâu (double-click)", { toolType, round });
+    d.doubleClickAtCenter(el) || d.clickAtCenter(el);
     await sleep(rand(140, 240));
     return true;
   }

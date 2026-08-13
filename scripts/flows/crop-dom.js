@@ -1429,10 +1429,16 @@
     const s = String(u || "").toLowerCase();
     const sl = String(slug || "").toLowerCase();
     if (!sl || s.startsWith("data:")) return false;
-    if (!s.includes("game-assets") || !s.includes("/crops/")) return false;
-    if (!s.includes(`/${sl}/`)) return false;
-    const seedPath = /\/seed\.(png|webp)(?:\?|$)/i.test(s);
-    const cropPath = allowCropArt && /\/crop\.(png|webp)(?:\?|$)/i.test(s);
+    if (!s.includes("/crops/") && !s.includes("crops/")) return false;
+
+    const isBroccoli = sl === "broccoli" || sl === "brocolli";
+    const slugMatch = isBroccoli
+      ? (s.includes("/broccoli/") || s.includes("/brocolli/"))
+      : s.includes(`/${sl}/`);
+    if (!slugMatch) return false;
+
+    const seedPath = /\/seed\.(png|webp|jpg)(?:\?|$)/i.test(s) || s.includes("seed");
+    const cropPath = allowCropArt && (/\/crop\.(png|webp|jpg)(?:\?|$)/i.test(s) || s.includes("crop"));
     return seedPath || cropPath;
   }
 
@@ -1706,12 +1712,15 @@
 
   /** Góc selectbox quanh ô (anh em `img` selectbox_* trong `div.relative`) — giống Workbench. */
   function cropInventoryBrownSlotHasSelectboxCorners(brown) {
-    const wrap = brown?.parentElement;
+    if (!brown) return false;
+    const wrap = brown.parentElement;
     if (!wrap) return false;
     try {
       const scoped =
         wrap.querySelector?.(":scope > img[src*='selectbox']") ||
-        wrap.querySelector?.(":scope > img[src*='/select/']");
+        wrap.querySelector?.(":scope > img[src*='/select/']") ||
+        brown.querySelector?.("img[src*='selectbox']") ||
+        brown.querySelector?.("img[src*='/select/']");
       if (scoped) return true;
       for (let i = 0; i < wrap.children.length; i += 1) {
         const ch = wrap.children[i];
@@ -1810,7 +1819,7 @@
         let hasSeedImg = false;
         try {
           hasSeedImg = !!row.querySelector(
-            'img[src*="/crops/"][src*="seed"],img[src*="/crops/"][src*="crop"],img[src*="/crops/"]',
+            'img[src*="crops/"][src*="seed"],img[src*="crops/"][src*="crop"],img[src*="crops/"],img[src*="/crops/"]',
           );
         } catch (_e2) {
           // ignore
@@ -1835,10 +1844,14 @@
     return false;
   }
 
-  /** Giỏ inventory: một cú bấm — double-click dễ toggle 2 lần về ô mặc định. */
-  async function clickCropInventoryBrownOnce(el) {
+  /** Giỏ inventory: double-click để chọn hạt chắc chắn không bị dính trạng thái hover. */
+  async function clickCropInventoryBrown(el) {
     if (!el || !d.isVisible(el)) return;
-    d.nativeClickClose(el);
+    d.doubleClickAtCenter(el) || d.doubleClick(el) || d.nativeClickClose(el);
+    const img = el.querySelector("img");
+    if (img && d.isVisible(img)) {
+      d.doubleClickAtCenter(img) || d.doubleClick(img);
+    }
     await sleep(rand(180, 320));
   }
 
@@ -1906,7 +1919,7 @@
     }
     // Fallback: nếu không tìm thấy wrapper phù hợp, click thẻ img
     if (!clickTarget) clickTarget = targetSeedImg;
-    d.nativeClickClose(clickTarget);
+    d.doubleClickAtCenter(clickTarget) || d.doubleClick(clickTarget) || d.nativeClickClose(clickTarget);
   }
 
   async function closeInventorySeedStripIfOpen() {
@@ -2155,7 +2168,7 @@
     // Click vào ô hạt — thử brown slot trước (chính xác hơn), fallback sang clickSeedImageRoot
     const brown = findCropInventoryBrownSlot(targetSeedImg);
     if (brown && d.isVisible(brown)) {
-      await clickCropInventoryBrownOnce(brown);
+      await clickCropInventoryBrown(brown);
     } else {
       clickSeedImageRoot(targetSeedImg);
       await sleep(rand(280, 480));
@@ -2176,7 +2189,7 @@
         // Click lại trước lần thử tiếp theo
         logFlow(`Ruộng DOM: chưa thấy selectbox sau click ${attempt + 1} — click lại`, { seedName });
         if (brown && d.isVisible(brown)) {
-          await clickCropInventoryBrownOnce(brown);
+          await clickCropInventoryBrown(brown);
         } else {
           clickSeedImageRoot(targetSeedImg);
           await sleep(rand(200, 350));
@@ -2808,7 +2821,7 @@
     const targets = findReadyHarvestTargets();
     if (targets.length <= 0) return false;
     const root = targets[0];
-    d.nativeClickClose(root) || d.click(root);
+    d.doubleClickAtCenter(root) || d.clickAtCenter(root) || d.nativeClickClose(root) || d.click(root);
     await uiJitter();
     try {
       await S.gameBridge?.requestState?.();
@@ -2873,10 +2886,22 @@
       return "no_plots";
     }
     
-    d.clickAtCenter(targetRoot) || d.nativeClickClose(targetRoot) || d.click(targetRoot);
+    d.doubleClickAtCenter(targetRoot) || d.clickAtCenter(targetRoot) || d.nativeClickClose(targetRoot) || d.click(targetRoot);
     await uiJitter();
     S.gameBridge?.requestState?.().catch(() => {});
-    await sleep(rand(50, 100));
+    await sleep(rand(120, 220));
+
+    // ── Kiểm tra sau khi click ô đất ──
+    // Nếu click ô đất mà bị bật mở cửa sổ giỏ đồ (inventory strip / holder popup),
+    // chứng tỏ game chưa nhận hạt đang cầm -> Xóa cache hạt, đóng cửa sổ popup để chọn lại dứt điểm.
+    if (isInventorySeedStripVisible() || isBettySeedShopDialogOpen()) {
+      logFlow("Ruộng DOM: ✕ click ô đất nhưng mở popup giỏ đồ (chưa cầm hạt thành công) — xóa cache, đóng popup để chọn lại", { seedName });
+      runtime.cropDomLastSelectedSeedName = null;
+      runtime.cropDomLastSelectedSeedAt = 0;
+      await closeInventorySeedStripIfOpen();
+      return "no_seed_ui";
+    }
+
     runtime.lastAction = "crop_plant_dom";
     runtime.lastActionAt = now();
     logFlow("Ruộng DOM: đã gieo", { seedName });

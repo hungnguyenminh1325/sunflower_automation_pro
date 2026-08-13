@@ -1516,7 +1516,7 @@
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
-      if (t.length > 0 && t.length < 56 && /\brestock|locked|lacking|yêu cầu\b/.test(t)) return true;
+      if (t.length > 0 && t.length < 56 && /\brestock|replenish|locked|lacking|yêu cầu\b/.test(t)) return true;
       try {
         const lockImg = el.querySelector('img[src*="lock"]');
         if (lockImg && lockImg !== img) return true;
@@ -2125,18 +2125,8 @@
       }
     }
 
-    // ── Kiểm tra hạt đã được chọn (selectbox highlight) ──
-    await sleep(rand(100, 200));
-    if (inventorySeedSlugAppearsSelected(slug)) {
-      logFlow("Ruộng DOM: hạt đã được chọn (verify qua selectbox)", { seedName });
-      runtime.cropDomLastSelectedSeedName = seedName;
-      runtime.cropDomLastSelectedSeedAt = now();
-      await closeInventorySeedStripIfOpen();
-      return true;
-    }
-
-    // ── Chưa chọn hoặc item khác đang chọn → tìm và click hạt ──
-    logFlow("Ruộng DOM: chọn lại hạt giống (item khác đang active hoặc chưa chọn)", { seedName });
+    // ── Chưa chọn hoặc item khác đang chọn → tiến hành click chọn hạt giống ──
+    logFlow("Ruộng DOM: tiến hành click chọn hạt giống", { seedName });
     runtime.cropDomLastSelectedSeedName = null;
 
     // Tìm ô hạt trong inventory strip

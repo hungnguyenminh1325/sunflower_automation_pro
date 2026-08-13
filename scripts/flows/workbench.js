@@ -248,7 +248,22 @@
   }
 
   function findBlacksmithRestockButton() {
-    return d.findInteractiveButtonByText(/restock|blacksmith/i);
+    return d.findInteractiveButtonByText(/restock|blacksmith|replenish/i);
+  }
+
+  function isFerryOrBoatElement(el) {
+    if (!el) return false;
+    const imgs = el.tagName === "IMG" ? [el] : el.querySelectorAll("img");
+    for (let i = 0; i < imgs.length; i++) {
+      const src = String(imgs[i].getAttribute("src") || "").toLowerCase();
+      if (src.includes("ferry") || src.includes("boat") || src.includes("captain") || src.includes("ship") || src.includes("travel")) {
+        return true;
+      }
+      if (src.startsWith("data:") && src.includes("ivborw0kggoaaaansuheugaaaeqaaaas")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function findWorkbenchClickable() {
@@ -257,6 +272,7 @@
       .filter((div) => {
         if (!d.isVisible(div) || !d.isClickablePointerEventsOk(div)) return false;
         if (!viewportMarginOk(div, 40)) return false;
+        if (isFerryOrBoatElement(div)) return false;
         const hasWorkbench = !!div.querySelector(
           "img[src*='game-assets/buildings/workbench'],img[src*='buildings/workbench.png'],img[src*='buildings/workbench']",
         );
@@ -268,6 +284,7 @@
 
     const primary = [];
     for (const div of queryAllGameDocs("div.relative.w-full.h-full.cursor-pointer.hover\\:img-highlight")) {
+      if (isFerryOrBoatElement(div)) continue;
       const wb = div.querySelector(
         "img[src*='game-assets/buildings/workbench'],img[src*='buildings/workbench'],img[src*='workbench.png'],img[src*='desert/buildings/workbench'],img[src*='volcano/buildings/workbench']",
       );
@@ -310,6 +327,7 @@
 
         if (!clickable || seenClickables.has(clickable)) continue;
         if (!d.isVisible(clickable)) continue;
+        if (isFerryOrBoatElement(clickable)) continue;
 
         const cls = String(clickable.getAttribute("class") || "");
         if (!cls.includes("cursor-pointer")) continue;
@@ -390,7 +408,7 @@
         const btn = nodes[i];
         if (!btn || !d.isVisible(btn)) continue;
         const t = (btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-        if (/\brestock\b/.test(t)) return btn;
+        if (/\brestock|replenish\b/.test(t)) return btn;
       }
     } catch (_e) {
       // ignore
@@ -1745,7 +1763,7 @@
     const imgFallback = queryAllGameDocs(
       "img[src*='workbench'],img[src*='blacksmith'],img[src*='forge'],img[alt*='blacksmith' i],img[alt*='workbench' i]",
     )
-      .filter((img) => d.isVisible(img) && d.isInViewport(img))
+      .filter((img) => d.isVisible(img) && d.isInViewport(img) && !isFerryOrBoatElement(img))
       .sort((a, b) => d.centerDistance(a) - d.centerDistance(b))[0];
 
     if (imgFallback && openWorkbenchClick(imgFallback)) {

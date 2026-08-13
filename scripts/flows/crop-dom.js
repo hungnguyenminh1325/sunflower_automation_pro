@@ -1710,6 +1710,18 @@
     return null;
   }
 
+  function getItemCountFromInventorySlot(brown) {
+    if (!brown) return null;
+    const text = (brown.textContent || "").trim();
+    if (!text) return null;
+    const matches = text.match(/\d+/g);
+    if (matches && matches.length > 0) {
+      const count = parseInt(matches[matches.length - 1], 10);
+      if (Number.isInteger(count)) return count;
+    }
+    return null;
+  }
+
   /** Góc selectbox quanh ô (anh em `img` selectbox_* trong `div.relative`) — giống Workbench. */
   function cropInventoryBrownSlotHasSelectboxCorners(brown) {
     if (!brown) return false;
@@ -2168,6 +2180,12 @@
     // Click vào ô hạt — thử brown slot trước (chính xác hơn), fallback sang clickSeedImageRoot
     const brown = findCropInventoryBrownSlot(targetSeedImg);
     if (brown && d.isVisible(brown)) {
+      const domCount = getItemCountFromInventorySlot(brown);
+      if (domCount === 0) {
+        logFlow("Ruộng DOM: Hạt giống hiển thị số lượng bằng 0 trong kho — bỏ qua không chọn", { seedName });
+        await closeInventorySeedStripIfOpen();
+        return false;
+      }
       await clickCropInventoryBrown(brown);
     } else {
       clickSeedImageRoot(targetSeedImg);

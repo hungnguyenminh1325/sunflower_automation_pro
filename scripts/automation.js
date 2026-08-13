@@ -551,6 +551,17 @@
       while (checkedCount < 6) {
         let didWork = false;
 
+        // Reset crop seed selection cache if transitioning to "crop" from another flow
+        if (runtime.currentSequenceStep !== "crop") {
+          runtime._lastSequenceStep = runtime.currentSequenceStep;
+        } else if (runtime.currentSequenceStep === "crop") {
+          if (runtime._lastSequenceStep !== "crop") {
+            runtime.cropDomLastSelectedSeedName = null;
+            runtime.cropDomLastSelectedSeedAt = 0;
+            runtime._lastSequenceStep = "crop";
+          }
+        }
+
         if (runtime.currentSequenceStep === "mushroom") {
           if (runtime.settings.autoHarvestMushrooms) {
             runtime.mushroomFlowState = "Đang chạy";

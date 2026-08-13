@@ -85,7 +85,7 @@
               ),
             },
             cook: (() => {
-              const cookOn = !!(runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen);
+              const cookOn = typeof S.cook?.isCookEnabled === "function" && S.cook.isCookEnabled();
               let intervalMs = 45 * 1000;
               if (cookOn && runtime.cookCycleEndAt > runtime.cookPhaseStartedAt && runtime.cookPhaseStartedAt > 0) {
                 intervalMs = Math.max(5000, runtime.cookCycleEndAt - runtime.cookPhaseStartedAt);
@@ -398,7 +398,7 @@
         runtime.mushroomFlowState = "Tạm tắt";
         runtime.nextMushroomFlowAt = t;
       }
-      if (runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen) {
+      if (typeof S.cook?.isCookEnabled === "function" && S.cook.isCookEnabled()) {
         runtime.cookFlowStartedAt = 0;
         runtime.nextCookFlowAt = t;
         runtime.cookFlowState = "Sẵn sàng";

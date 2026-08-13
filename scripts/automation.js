@@ -984,7 +984,7 @@
     if (runtime.settings.autoChop) runtime.treeFlowState = "Restart (Heartbeat)";
     if (runtime.settings.autoMine) runtime.rockFlowState = "Restart (Heartbeat)";
     if (runtime.settings.autoHarvestMushrooms) runtime.mushroomFlowState = "Restart (Heartbeat)";
-    if (runtime.settings.autoCookFirePit || runtime.settings.autoCookKitchen) runtime.cookFlowState = "Restart (Heartbeat)";
+    if (typeof S.cook?.isCookEnabled === "function" && S.cook.isCookEnabled()) runtime.cookFlowState = "Restart (Heartbeat)";
     
     runtime.currentSequenceStep = "mushroom";
 

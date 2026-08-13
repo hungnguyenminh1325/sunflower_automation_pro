@@ -1860,10 +1860,6 @@
   async function clickCropInventoryBrown(el) {
     if (!el || !d.isVisible(el)) return;
     d.doubleClickAtCenter(el) || d.doubleClick(el) || d.nativeClickClose(el);
-    const img = el.querySelector("img");
-    if (img && d.isVisible(img)) {
-      d.doubleClickAtCenter(img) || d.doubleClick(img);
-    }
     await sleep(rand(180, 320));
   }
 

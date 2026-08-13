@@ -207,8 +207,8 @@ async function refreshStatus(opts = {}) {
   }
   setStatus(
     status?.busy
-      ? `Bot đang thực hiện thao tác (${status?.lastAction || "running"}).`
-      : "Đã kết nối tab game và sẵn sàng chạy.",
+      ? `Status: ${status?.lastAction || "running"}.`
+      : "Status: Live.",
     "live",
   );
   setStatusDetails({
